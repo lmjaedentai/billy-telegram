@@ -1,32 +1,29 @@
 print('==========start==========')
+import os
 import json
 import random
 import asyncio
 import requests
 import urllib.request
-from ytmusicapi import YTMusic
-from PyMultiDictionary import MultiDictionary
 import mediawiki
 from mediawiki import MediaWiki
+from pytube import YouTube
+from PyMultiDictionary import MultiDictionary
 from pyromod import listen
-from pyrogram import Client,filters,emoji
-from pyrogram.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram import Client,filters,emoji, errors
+from pyrogram.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, CallbackGame
 
 
 #QQ slash commands
 app = Client("BillyKaiChengBot",api_id="17817209",api_hash="1317fd0bcc2b193c3dbd04defc748358",bot_token="5277492303:AAFoaZvrUicVyIIjgwG2HyrliGuht4Bda6Q")
 with app:
-    # app.send_message("lmjaedentai", "login\ndevice: vscode")
-    app.send_message("lmjaedentai", "login\ndevice: [heroku](https://replit.com/@lmjaedentai/Billy-Telegram#main.py)", disable_web_page_preview=True)
+    app.send_message("lmjaedentai", "login\ndevice: vscode")
+    # app.send_message("lmjaedentai", "login\ndevice: [repl.it](https://replit.com/@lmjaedentai/Billy-Telegram#main.py)", disable_web_page_preview=True)
     print('==========login==========')
 
 
-@app.on_message(filters.command(["start", "help"]))
-async def start_command(client, message):
-    await print("This is the /start command")
-
 @app.on_message(filters.command("covid"))
-async def start_command(client, message):
+async def covid(client, message):
     def readcsv(url):
         with urllib.request.urlopen(url) as f:
             last = f.readlines()[-1]
@@ -48,51 +45,40 @@ async def start_command(client, message):
     await message.reply(content)   
 
 @app.on_message(filters.command("sticker"))
-async def start_command(client, message):
-    await message.delete()
+async def sticker(client, message):
+    try:
+        await message.delete()
+    except errors.exceptions.forbidden_403.MessageDeleteForbidden:
+        pass
     choose = await message.reply('choose the sticker you want',reply_markup=ReplyKeyboardMarkup([['.xi','.fbi','.rick','.nono'],['.jeng','.abucom','.rainbow'],['.triggered','.SystemError']],resize_keyboard=True))
     await asyncio.sleep(10)
     await choose.delete()
 
 @app.on_message(filters.command("dictionary"))
-async def start_command(client, message):
+async def dictionary(client, message):
     query = await app.ask(message.chat.id, "🔎 Which word you want to define?")
     dictionary = MultiDictionary()
     rawresult = dictionary.meaning('en', query.text)
     if rawresult[1] != '':
-        await message.reply(f'📘 **{query.text}** \n\n{rawresult[1]}'
-                            ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📘 Oxford dictionary",url=f'https://www.oxfordlearnersdictionaries.com/definition/english/{query.text}')]]))
+        await message.reply(f'📘 **{query.text}** \n\n{rawresult[1]}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📘 Oxford",url=f'https://www.oxfordlearnersdictionaries.com/definition/english/{query.text}'),InlineKeyboardButton("🔎 Google",url=f'https://www.google.com/search?q=define%20{query.text}')]]))
     else:
-        await message.reply(f'❌ **No search result** \n\nTry Google.')
+        await message.reply(f'❌ **No search result**',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={query.text}')]]))
 
 @app.on_message(filters.command("kamus"))
-async def start_command(client, message):
+async def kamus(client, message):
     query = await app.ask(message.chat.id, "🔎 Apakah perkataan kamu ingin cari?")
     dictionary = MultiDictionary()
     rawresult = dictionary.meaning('ms', query.text)
     if rawresult[1] != '':
         if len(rawresult[1]) > 4095:
-            await message.reply(f'📕 **{query.text}** \n\n Definisi terlalu panjang. Anda boleh cari dalam laman web kamus dewan di bawah.'
-                            ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text}')]]))
-        print(rawresult[1])
-        await message.reply(f'📕 **{query.text}** \n\n{rawresult[1]}'
-                            ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text}')]]))
+            await message.reply(f'📕 **{query.text}** \n\nDefinisi terlalu panjang. Anda boleh cari melalui kamus online.', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text}')]]))
+            return
+        await message.reply(f'📕 **{query.text}** \n\n{rawresult[1]}', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text}')]]))
     else:
-        await message.reply(f'❌ **Carian kata tiada di dalam kamus terkini** \n\nCari Google.')
-
-@app.on_message(filters.command("lyrics"))
-async def start_command(client, message):
-    return await message.reply('Still under construction 🏗️ 🚧')
-    query = await app.ask(message.chat.id, "🔎 What song's lyrics you want?")
-    ytmusic = YTMusic()
-    rawdata = ytmusic.search(query.text,filter='songs',limit=1)
-    print(json.dumps(rawdata, indent = 3))
-    return
-    browseid = ytmusic.get_watch_playlist(videoid)
-    lyrics = ytmusic.get_lyrics(browseid)
+        await message.reply(f'❌ **Carian kata tiada di dalam kamus terkini**',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={query.text}')]]))
 
 @app.on_message(filters.command("wiki"))
-async def start_command(client, message):
+async def wiki(client, message):
     wiki = MediaWiki()
     search = await app.ask(message.chat.id, "🔎 Which article you want to search ?")
     try:
@@ -100,15 +86,51 @@ async def start_command(client, message):
     except mediawiki.DisambiguationError as error:
         await message.reply(f'**🤔 Please specify your search query** \n\n{error} \nYour search query matched mutliple pages.')
     except mediawiki.PageError:
-        await message.reply(f'❌ **No search result** \n\nTry Google.')
+        await message.reply(f'❌ **No search result** \n\nTry Google.',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f'https://www.google.com/search?q={search.text}')]]))
     except Exception as error:
         raise Exception(error)
     else:
         result = wiki.page(search.text)
-        await message.reply(f'📖 **{result.title}**\n\n{content}'
-                    ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("wikipedia",url=result.url)]]))
+        await message.reply(f'📖 **{result.title}**\n\n{content}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📖 Wikipedia",url=result.url)]]))
+
+@app.on_message(filters.command("google"))
+async def google(client, message):
+    query = await app.ask(message.chat.id, "🔎 What is your search query?")
+    await message.reply(f'[{query.text} - Google Search](https://www.google.com/search?q={query.text})')
+
+@app.on_message(filters.command("popspike"))
+async def popspike(client, message):
+    await message.reply_animation('https://media2.giphy.com/media/9kGetuUhz0u29cGcJ5/giphy.gif?cid=790b76110f5b64e48a6f431eecf73e5803e0e748f59fb2b5&rid=giphy.gif&ct=g',caption='[Popspike](https://lmjaedentai.github.io/popspike)',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Play Popspike",url='https://lmjaedentai.github.io/popspike')]]))
+
+@app.on_callback_query()
+async def openquery(client, callback_query): #show text "hello" and open my html 5 game through `url` para
+    await callback_query.answer(url='https://lmjaedentai.github.io/popspike')
 
 
+@app.on_message(filters.command("video"))
+async def video(client, message):
+    query = await app.ask(message.chat.id, "📺  What is the **url** of youtube video you want to download?")
+    notify = await message.reply("⬇️  downloading media...")
+    music = YouTube(query.text).streams.filter(file_extension='mp4').first().download()
+    await notify.delete()
+    notify = await message.reply("➡️  sending media...")
+    await message.reply_document(music,caption=YouTube(query.text).title,force_document=True)
+    await notify.delete()
+    os.remove(music)
+
+@app.on_message(filters.command("music"))
+async def music(client, message):
+    query = await app.ask(message.chat.id, "🎺 What is the **url** of youtube mp3 you want to download?")
+    notify = await message.reply("⬇️  downloading media...")
+    music = YouTube(query.text).streams.filter(file_extension='mp4',only_audio=True).first().download()
+    await notify.delete()
+    notify = await message.reply("➡️  sending media...")
+    base, ext = os.path.splitext(music)
+    new_file = base + '.mp3'
+    os.rename(music, new_file)
+    await message.reply_document(new_file,caption=YouTube(query.text).title,force_document=True)
+    await notify.delete()
+    os.remove(new_file)
 
 
 @app.on_message(filters.text & ~filters.edited)
@@ -121,7 +143,7 @@ async def my_handler(client, message):
             '.rick': lambda: message.reply_animation("https://c.tenor.com/VFFJ8Ei3C2IAAAAM/rickroll-rick.gif"),
             '.nono':  lambda: message.reply_photo('https://www.aixiaola.com/wp-content/uploads/2021/10/c4d36f57bf4cc6e7d0c979398822a755.jpg'),
             '.jeng':lambda: message.reply_animation('https://c.tenor.com/oGICkKJ1Y8QAAAAd/jeng.gif'),
-            '.abucom': lambda: message.reply_photo('https://lmjaedentai.github.io/abu/asset/news.jpg'),
+            '.abucom': lambda: message.reply_photo('https://lmjaedentai.github.io/abu/asset/news.jpg',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🌸 Start",url=f'https://lmjaedentai.github.io/abu')]])),
             '.triggered': lambda: message.reply_animation('https://c.tenor.com/xVLmXq1yLzQAAAAC/triggered.gif'),
             '.SystemError': lambda: message.reply_photo('https://cdn.vox-cdn.com/thumbor/acSRiL1daqU6Ck5ogaUzuQXMPxU=/0x0:1320x880/1200x800/filters:focal(555x335:765x545)/cdn.vox-cdn.com/uploads/chorus_image/image/69531789/windows11bsod.0.jpg')
         }
