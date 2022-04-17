@@ -6,6 +6,7 @@ import asyncio
 import requests
 import urllib.request
 import mediawiki
+import lyricsgenius as lg
 from mediawiki import MediaWiki
 from pytube import YouTube
 from PyMultiDictionary import MultiDictionary
@@ -15,10 +16,13 @@ from pyrogram.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyb
 
 
 #QQ slash commands
+dictionary = MultiDictionary()
+wiki = MediaWiki()
+genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpYRjte", skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"], remove_section_headers=True)
 app = Client("BillyKaiChengBot",api_id="17817209",api_hash="1317fd0bcc2b193c3dbd04defc748358",bot_token="5277492303:AAFoaZvrUicVyIIjgwG2HyrliGuht4Bda6Q")
 with app:
     app.send_message("lmjaedentai", "login\ndevice: vscode")
-    # app.send_message("lmjaedentai", "login\ndevice: [repl.it](https://replit.com/@lmjaedentai/Billy-Telegram#main.py)", disable_web_page_preview=True)
+    # app.send_message("lmjaedentai", "login\ndevice: [repl.it](https://replit.com/@lmjaedentai/Billy-Telegram#main.py)", disable_web_page_preview=True,disable_notification=True)
     print('==========login==========')
 
 
@@ -57,7 +61,6 @@ async def sticker(client, message):
 @app.on_message(filters.command("dictionary"))
 async def dictionary(client, message):
     query = await app.ask(message.chat.id, "🔎 Which word you want to define?")
-    dictionary = MultiDictionary()
     rawresult = dictionary.meaning('en', query.text)
     if rawresult[1] != '':
         await message.reply(f'📘 **{query.text}** \n\n{rawresult[1]}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📘 Oxford",url=f'https://www.oxfordlearnersdictionaries.com/definition/english/{query.text}'),InlineKeyboardButton("🔎 Google",url=f'https://www.google.com/search?q=define%20{query.text}')]]))
@@ -67,7 +70,6 @@ async def dictionary(client, message):
 @app.on_message(filters.command("kamus"))
 async def kamus(client, message):
     query = await app.ask(message.chat.id, "🔎 Apakah perkataan kamu ingin cari?")
-    dictionary = MultiDictionary()
     rawresult = dictionary.meaning('ms', query.text)
     if rawresult[1] != '':
         if len(rawresult[1]) > 4095:
@@ -79,7 +81,6 @@ async def kamus(client, message):
 
 @app.on_message(filters.command("wiki"))
 async def wiki(client, message):
-    wiki = MediaWiki()
     search = await app.ask(message.chat.id, "🔎 Which article you want to search ?")
     try:
         content = wiki.summary(search.text, sentences=5)
@@ -93,45 +94,45 @@ async def wiki(client, message):
         result = wiki.page(search.text)
         await message.reply(f'📖 **{result.title}**\n\n{content}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📖 Wikipedia",url=result.url)]]))
 
-@app.on_message(filters.command("google"))
-async def google(client, message):
-    query = await app.ask(message.chat.id, "🔎 What is your search query?")
-    await message.reply(f'[{query.text} - Google Search](https://www.google.com/search?q={query.text})')
+@app.on_message(filters.command("lyrics"))
+async def findlyrics(client, message):
+    query = await app.ask(message.chat.id, "🎸 Which song lyrics you want?",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💫 Powered by GeniusApi",url=f'https://genius.com/')]]))
+    lyrics = genius.search_song(query.text, get_full_info=True)
+    if lyrics is None:
+        await message.reply(f'❌ **No search result**',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={query.text}%20lyrics')]]))
+    else:
+        await message.reply('**🎸 '+lyrics.lyrics.replace("Embed", "").replace('Lyrics','Lyrics**\n\n'))
 
-@app.on_message(filters.command("popspike"))
-async def popspike(client, message):
-    await message.reply_animation('https://media2.giphy.com/media/9kGetuUhz0u29cGcJ5/giphy.gif?cid=790b76110f5b64e48a6f431eecf73e5803e0e748f59fb2b5&rid=giphy.gif&ct=g',caption='[Popspike](https://lmjaedentai.github.io/popspike)',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Play Popspike",url='https://lmjaedentai.github.io/popspike')]]))
+@app.on_message(filters.command("meet"))
+async def createmeet(client, message):
+    await message.reply_photo("https://i.imgur.com/9k81Efw.png",caption='support MOE only.'
+    ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🐢 click to join",url=f'https://accounts.google.com/AccountChooser/signinchooser?continue=https://g.co/meet/pythongroup')]]))
+
+@app.on_message(filters.command("music"))
+async def music(client, message):
+    #download
+    query = await app.ask(message.chat.id, "🎺 What is the **url** of youtube mp3 you want to download?")
+    if checkvalid(query.text) == False:
+        return await message.reply("❌ **Invalid url.** We only support videos from Youtube. ")
+    await app.send_chat_action(message.chat.id, "typing")
+    status = await message.reply("⬇️  downloading media...")
+    music = YouTube(query.text).streams.filter(file_extension='mp4',only_audio=True).order_by('resolution').desc().first().download()
+    await status.delete()
+    #convert
+    await app.send_chat_action(message.chat.id, "upload_video")
+    status = await message.reply("➡️  sending media...")
+    base, ext = os.path.splitext(music)
+    new_file = base + '.mp3'
+    os.rename(music, new_file)
+    #send
+    await message.reply_document(new_file,caption=YouTube(query.text).title,force_document=True)
+    await app.send_chat_action(message.chat.id, "cancel")
+    await status.delete()
+    os.remove(new_file)
 
 @app.on_callback_query()
 async def openquery(client, callback_query): #show text "hello" and open my html 5 game through `url` para
     await callback_query.answer(url='https://lmjaedentai.github.io/popspike')
-
-
-@app.on_message(filters.command("video"))
-async def video(client, message):
-    query = await app.ask(message.chat.id, "📺  What is the **url** of youtube video you want to download?")
-    notify = await message.reply("⬇️  downloading media...")
-    music = YouTube(query.text).streams.filter(file_extension='mp4').first().download()
-    await notify.delete()
-    notify = await message.reply("➡️  sending media...")
-    await message.reply_document(music,caption=YouTube(query.text).title,force_document=True)
-    await notify.delete()
-    os.remove(music)
-
-@app.on_message(filters.command("music"))
-async def music(client, message):
-    query = await app.ask(message.chat.id, "🎺 What is the **url** of youtube mp3 you want to download?")
-    notify = await message.reply("⬇️  downloading media...")
-    music = YouTube(query.text).streams.filter(file_extension='mp4',only_audio=True).first().download()
-    await notify.delete()
-    notify = await message.reply("➡️  sending media...")
-    base, ext = os.path.splitext(music)
-    new_file = base + '.mp3'
-    os.rename(music, new_file)
-    await message.reply_document(new_file,caption=YouTube(query.text).title,force_document=True)
-    await notify.delete()
-    os.remove(new_file)
-
 
 @app.on_message(filters.text & ~filters.edited)
 async def my_handler(client, message):
@@ -145,7 +146,8 @@ async def my_handler(client, message):
             '.jeng':lambda: message.reply_animation('https://c.tenor.com/oGICkKJ1Y8QAAAAd/jeng.gif'),
             '.abucom': lambda: message.reply_photo('https://lmjaedentai.github.io/abu/asset/news.jpg',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🌸 Start",url=f'https://lmjaedentai.github.io/abu')]])),
             '.triggered': lambda: message.reply_animation('https://c.tenor.com/xVLmXq1yLzQAAAAC/triggered.gif'),
-            '.SystemError': lambda: message.reply_photo('https://cdn.vox-cdn.com/thumbor/acSRiL1daqU6Ck5ogaUzuQXMPxU=/0x0:1320x880/1200x800/filters:focal(555x335:765x545)/cdn.vox-cdn.com/uploads/chorus_image/image/69531789/windows11bsod.0.jpg')
+            '.SystemError': lambda: message.reply_photo('https://cdn.vox-cdn.com/thumbor/acSRiL1daqU6Ck5ogaUzuQXMPxU=/0x0:1320x880/1200x800/filters:focal(555x335:765x545)/cdn.vox-cdn.com/uploads/chorus_image/image/69531789/windows11bsod.0.jpg'),
+            '.meet': lambda: message.reply('https://meet.google.com/new')
         }
         try:
             await switcher[argument]()
@@ -159,6 +161,8 @@ async def welcome(client, message):
     MENTION = "[{}](tg://user?id={})"  # User mention markup
     new_members = [u.mention for u in message.new_chat_members]
     await message.reply(f'🥳✨Welcome to the shittest place in telegram {new_members} ! 🚀💩', disable_web_page_preview=True)
+
+
 
 
 
