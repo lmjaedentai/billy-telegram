@@ -38,7 +38,7 @@ PyNaCl==1.4.0
 Pyrogram==1.4.7
 pyromod==1.5
 PySocks==1.7.1
-# pytube==12.0.0 
+git+https://github.com/kinshuk-h/pytube.git
 requests==2.27.1
 rfc3986==1.5.0
 six==1.16.0
