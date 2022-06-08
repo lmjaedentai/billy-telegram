@@ -14,8 +14,8 @@ import mediawiki
 import lyricsgenius as lg
 from telegraph import Telegraph
 from mediawiki import MediaWiki
-from pytube import YouTube, exceptions
-from google_trans_new import google_translator  
+from module.pytube import YouTube, exceptions
+from module.google_trans_new import google_translator  
 from PyMultiDictionary import MultiDictionary, DICT_WORDNET
 from pyromod import listen
 from pyrogram import Client,filters,emoji, errors
