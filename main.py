@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import csv
+sys.path.append('./module')
 import json
 import random
 import urllib
@@ -314,5 +315,5 @@ def sticker(client, inline_query):
 # from online import keep_alive 
 # keep_alive()
 stickerlist = getsticker()
-sys.path.append('./module')
+
 app.run()
