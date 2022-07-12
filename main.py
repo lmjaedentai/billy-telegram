@@ -18,7 +18,7 @@ from mediawiki import MediaWiki
 from PyMultiDictionary import MultiDictionary, DICT_WORDNET
 from pyromod import listen
 from pyrogram import Client,filters,emoji, errors
-from pyrogram.types import Message, InlineKeyboardButton, KeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup,InlineQuery, InlineQueryResultArticle,InlineQueryResultPhoto, InputTextMessageContent, ForceReply
+from pyrogram.types import Message, InlineKeyboardButton, KeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup,InlineQuery, InlineQueryResultArticle,InlineQueryResultPhoto, InputTextMessageContent, ForceReply, ReplyKeyboardRemove
 from module.pytube import YouTube, exceptions
 from module.google_trans_new import google_translator  
   
@@ -102,10 +102,14 @@ async def covid(client, message):
                     ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ more info",url="https://covidnow.moh.gov.my/")]]))
 
 @app.on_message(filters.command("shau"))
+@error_handling
 async def sendshau(client, message):
     instructiion = await message.reply("GO",reply_markup=ReplyKeyboardMarkup([[shau(),shau()],[shau(),shau()]]))
+    await asyncio.sleep(2)
     await instructiion.delete()
-
+    await asyncio.sleep(20)
+    remove = await message.reply("times up",reply_markup=ReplyKeyboardRemove())
+    await remove.delete()
 
 @app.on_message(filters.command("dict"))
 @error_handling
@@ -282,13 +286,30 @@ async def remind(client, message): #FIXME  UTC 8
 async def reminder_instructions(client, callback_query):
     await callback_query.answer(f"🕒 Time:\n10 second: 10s\n10 minutes: 10m\n10 hours: 10h\n10 days: 10d\n\nYou can enter any value you like, but maximum duration is 90 days.",show_alert=True)
 
-@app.on_message(filters.command("t"))
+@app.on_message(filters.command("base"))
+@error_handling
+async def numbase(client, message):    
+    def switchbase(n, b): 
+            BS="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            return "0" if not n else switchbase(n//b, b).lstrip("0") + BS[n%b]
+
+    frombase = await app.ask(message.chat.id, "from base:  ",reply_markup=ReplyKeyboardMarkup([['10','2'],['8','16']]))
+    tobase =     await app.ask(message.chat.id, "to base:  ",reply_markup=ReplyKeyboardMarkup([['10','2'],['8','16']], one_time_keyboard=True))
+    value = await app.ask(message.chat.id, f"🔣 Enter the your value",reply_markup = ForceReply(placeholder="example: 01010010"))
+    try:
+        answer = switchbase(int(value.text, int(frombase.text)) , int(tobase.text))
+    except (SyntaxError, ValueError):
+        await app.send_message(message.chat.id,"❌ **Invalid input.** Check your bases and value properly")
+    except RuntimeError:
+        await app.send_message(message.chat.id,"❌ Value is too large. Sorry for that.",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("try this 👍🏻",url=f'https://www.rapidtables.com/convert/number/hex-dec-bin-converter.html')]]))
+    else:
+        await app.send_message(message.chat.id,f'original: {value.text}\nanswer: **{answer}**\n\n`(from base {frombase.text} to {tobase.text})`')
+
+
+@app.on_message(filters.command("start"))
 @error_handling
 async def test(client, message):
-    query = await app.ask(message.chat.id, "🎸 Which song lyrics you want?",reply_markup=ForceReply(placeholder='text you love '))
-    # query = await app.ask(message.chat.id, "🎸 Which song lyrics you want?",reply_markup=[ForceReply(placeholder='text you love '),ReplyKeyboardMarkup([['🇬🇧 English','🇲🇾 Bahasa Melayu','🇹🇼 正体中文']],resize_keyboard=True)])
-    await message.reply(query.text)
-    MenuButtonCommands()
+    await app.send_message(message.chat.id,'Glad to meet you. Have a nice day!',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ️ insturctions",url=f'https://github.com/lmjaedentai/billy-telegram#readme')]]), disable_web_page_preview=True)
 
 
 
