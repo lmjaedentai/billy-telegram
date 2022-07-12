@@ -17,7 +17,7 @@
 
 
 # Billy KaiCheng
-A multipurpose discord bot made by **Jaeden Tai :trollface:** in 2021 by using [Nextcord](https://github.com/nextcord/nextcord).
+A multipurpose telegram bot by **Jaeden Tai :trollface:** in 2022 by using [Pyrogram](https://docs.pyrogram.org/).
 
 ## Commands
 | Command      | Function                                                         |
@@ -29,12 +29,12 @@ A multipurpose discord bot made by **Jaeden Tai :trollface:** in 2021 by using [
 | kamus        | cari definisi perkataan                                          |
 | lyrics       | find lyrics for your favourite music                             |
 | remind       | remind you something                                             |
-| meet         | create google meet automatically, currently support MOE acc only |
+| meet         | create google meet automatically|
 | music        |  download youtube audio                                          |
 | translate    | translate service by Google                                      |
 | wiki         |  search article in wikipedia                                     |
 
 
 ## Thanks to
-- [Pyrogram](https://t.me/pyrogramchat) Community Helper that help me so much in nc issue.
-- People in stackoverflow that give me support and suggestions 
+- [Pyrogram](https://t.me/pyrogramchat) Community Helper that help me so much.
+- People in stackoverflow that give me support and suggestion.
