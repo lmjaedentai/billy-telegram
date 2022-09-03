@@ -45,11 +45,12 @@ body:
 - type: textarea
   attributes:
     label: Error code / warnings produced
-    description: "Provide logs from KEDA operator, if need be."
+    description: "Provide error messages, warnings or output from bot, if need be."
     value: |
-      ```
-      example
-      ```
+     ❌ An unexpected error has occur 
+        name 'this_is_an_error' is not defined
+        We are sorry for that. Fullerror
+
   validations:
     required: false
 
