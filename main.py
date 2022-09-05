@@ -1,4 +1,5 @@
 print('==========start==========')
+from faulthandler import disable
 import re
 import os
 import sys
@@ -29,8 +30,8 @@ telegraph.create_account(short_name='billy')
 genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpYRjte", skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"], remove_section_headers=True)
 translator = google_translator(url_suffix="my") 
 app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
+# app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
 with app:
-    # app.send_message(-1001518766606, "login\ndevice: vscode")
     app.send_message(-1001518766606, "login\ndevice: heroku")
     # app.send_message(-1001518766606, "login\ndevice: [repl.it](https://replit.com/@lmjaedentai/Billy-Telegram#main.py)", disable_web_page_preview=True,disable_notification=True)
     print('==========login==========')
@@ -45,8 +46,8 @@ def error_handling(func):
             await func(app,message,**kwargs)
         except Exception as error:
             fullerror = "".join(traceback.TracebackException.from_exception(error).format())
-            printerror = await app.send_message(-1001518766606,f'❌ **{error}**\n```\n{fullerror}\n```\n', disable_web_page_preview=True)
-            await app.send_message(message.chat.id,f"❌ **An unexpected error has occur** \n```\n{error}\n```\nWe are sorry for that. [Fullerror]({printerror.link})")
+            printerror = await app.send_message(-1001518766606,f'❌ **{error}**\n```\n{fullerror}\n```#error', disable_web_page_preview=True)
+            await app.send_message(message.chat.id,f"❌ **[An unexpected error has occur]({printerror.link})** \n```\n{error}\n```\nWe are sorry for that   /help", disable_web_page_preview=True)
             traceback.print_exception(type(error), error, error.__traceback__, file = sys.stderr)
     return inner
 
@@ -97,23 +98,30 @@ async def dictionary(client, message):
     dictionary = MultiDictionary()
     query = await app.ask(message.chat.id, "🔎 Enter a word to define",filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer"),)
     typing = await app.send_message(message.chat.id,'searching...')
+    search = query.text.lower()
     try:
-        rawresult = dictionary.meaning('en',query.text, dictionary=DICT_WORDNET)
+        rawresult = dictionary.meaning('en',search, dictionary=DICT_WORDNET)
     except IndexError:
-        await message.reply(f'❌ **No search result**',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={query.text.replace(" ","%20")}')]]))
+        await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
     else:
         text = ''
         success = False
-        with open('dict.csv', 'r', encoding='utf-8') as f:
+        with open('dict pro.csv', 'r', encoding='utf-8') as f:
             for row in csv.reader(f, delimiter=","):
-                if query.text == row[0]:
+                if search == row[0]:
                     success = True
                     for i in row:
                         text += i  
+                    text = text.replace(row[1],f'__{row[1]}__').replace('[',f'\n[')
         if success:
-            zh = text.replace(query.text,'').replace('n.','\nNoun: ').replace('v.','\nVerb: ').replace('adj.','\nAdjective: ').replace('adv.','\nAdverb: ').replace('prep.','\nPreposition: ')
+            targetlist = ['n.','adv.','adj.','v.','prep.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.']
+            replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.']
+            zh = text.replace(search,'')
+            for i in range(len(targetlist)):
+                zh = zh.replace(targetlist[i],replacelist[i])
+            # print(zh)
         else:
-            zh = f"\n{translator.translate(query.text,lang_tgt='zh')}"
+            zh = f"\n{translator.translate(search,lang_tgt='zh')}"
         i = 0
         result = ''
         for types in ['Noun','Verb','Adjective','Adverb']:
@@ -122,8 +130,8 @@ async def dictionary(client, message):
                 for meanings in rawresult[types]:
                     i+=1
                     result += f'{i}. {meanings}\n'
-        await app.send_message(message.chat.id,f'📘 **[{query.text}](https://www.oxfordlearnersdictionaries.com/definition/english/{query.text.lower().replace(" ","%20")})** \n{result}‎ ')
-        await app.send_message(message.chat.id,f'👲🏻**中文注释**\n {zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/xzqigogo/dictonary')]]))
+        await app.send_message(message.chat.id,f'📘 **[{search}](https://www.oxfordlearnersdictionaries.com/definition/english/{search.replace(" ","%20")})** \n{result}‎ ')
+        await app.send_message(message.chat.id,f'👲🏻**中文注释**\n{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
     await typing.delete()
 
 @app.on_message(filters.command("kamus"))
@@ -133,7 +141,7 @@ async def kamus(client, message):
     typing = await app.send_message(message.chat.id,'searching...')
     zh = translator.translate(query.text,lang_tgt='zh') 
     if zh == query.text or zh == '':
-        await message.reply(f'❌ **Carian kata tiada di dalam kamus terkini**',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={query.text.replace(" ","%20")}')]]))
+        await message.reply(f'❌ **Carian kata tiada di dalam kamus terkini**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={query.text.replace(" ","%20")}')]]))
     else: 
         await app.send_message(message.chat.id,f'📕 **{query.text}** \n\n👲 {zh}\n\n**[➡️ lihat selanjutnya](https://www.ekamus.info/index.php/term/%E9%A9%AC%E6%9D%A5%E6%96%87-%E5%8D%8E%E6%96%87%E5%AD%97%E5%85%B8,{query.text.replace(" ","%20").lower()}.xhtml)**')#, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text.replace(" ","%20")}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text.replace(" ","%20")}')]]))
     await typing.delete()
@@ -158,7 +166,7 @@ async def music(client, message):
         try:
             YouTube(url).title 
         except exceptions.RegexMatchError:
-            return message.reply("❌ **Invalid query.** \nWe only support videos from Youtube.")
+            return message.reply("❌ **Invalid query.** \nWe only support videos from Youtube.   /music")
         else:
             return url
     #download
@@ -210,7 +218,7 @@ async def wiki(client, message):
     except mediawiki.DisambiguationError as error:
         await message.reply(f'**🤔 Please specify your search query** \n\n{error} \nYour search query matched mutliple pages.')
     except mediawiki.PageError:
-        await message.reply(f'❌ **No search result** \n\nTry Google.',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.text.replace(' ','%20')}")]]))
+        await message.reply(f'❌ **No search result** \n\nTry Google.   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.text.replace(' ','%20')}")]]))
     except Exception as error:
         raise Exception(error)
     else:
@@ -262,7 +270,7 @@ async def remind(client, message):
         seconds = int(time[:-1]) * time_convert[time[-1]]
         print('[second]',seconds)
     except (ValueError, KeyError,TypeError):
-        await app.send_message(message.chat.id,f"Click this to see instructions 👇🏻",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
+        await app.send_message(message.chat.id,f"Click this to see instructions 👇🏻 and try again /remind",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
         return
     test = pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now())
     rawdate = test + datetime.timedelta(seconds = seconds)
