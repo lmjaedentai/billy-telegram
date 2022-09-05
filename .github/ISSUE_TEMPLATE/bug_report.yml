@@ -1,0 +1,76 @@
+name: Report a bug 🐛
+description: Create a report to help us improve
+labels: bug, to review
+body:
+- type: markdown
+  attributes:
+    value: |
+      ## Self-help
+      Thank you for considering to open a bug report!
+
+      Before you do, however, make sure to check our existing resources to see if it has already been discussed/reported:
+      - [Reported bugs](https://github.com/kedacore/keda/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Abug)
+      - [Troubleshooting guide](https://keda.sh/docs/latest/troubleshooting/)
+      - [GitHub Discussions](https://github.com/kedacore/keda/discussions)
+      - [FAQ](https://keda.sh/docs/latest/faq/)
+- type: textarea
+  attributes:
+    label: Report
+    description: "What bug have you encountered?"
+    placeholder: "A clear and concise description of what the bug is."
+- type: textarea
+  attributes:
+    label: Expected Behavior
+    description: What did you expect to happen?
+    placeholder: What did you expect to happen?
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Actual Behavior
+    description: Also tell us, what did you see is happen?
+    placeholder: Tell us what you see that is happening
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Steps to Reproduce the Problem
+    description: "How can we reproduce this bug? Please walk us through it step by step."
+    value: |
+      1.
+      2.
+      3.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Error code / warnings produced
+    description: "Provide error messages, warnings or output from bot, if need be."
+    value: |
+     ❌ An unexpected error has occur 
+        name 'this_is_an_error' is not defined
+        We are sorry for that. Fullerror
+
+  validations:
+    required: false
+
+- type: dropdown
+  attributes:
+    label: Platform
+    description: Where is the bot running?
+    options:
+    - Any (all)
+    - Android
+    - iOS
+    - Web App in PC
+    - Windows 
+    - MacOS
+    - Other
+  validations:
+    required: false
+
+- type: textarea
+  id: anything-else
+  attributes:
+    label: Anything else?
+    description: "Let us know if you have anything else to share"

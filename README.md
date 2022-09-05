@@ -20,19 +20,19 @@
 A multipurpose telegram bot by **Jaeden Tai :trollface:** in 2022 by using [Pyrogram](https://docs.pyrogram.org/).
 
 ## Commands
-| Command      | Function                                                         |
-|--------------|------------------------------------------------------------------|
-| calc         | solve simple math instantly                                      |
-| covid        | check current covid statistic in Malaysia                        |
-| shau         | designed for Jabatan Perdana Menteri Hal Ehwal Agama             |
-| dict         | find word definition                                             |
-| kamus        | cari definisi perkataan                                          |
-| lyrics       | find lyrics for your favourite music                             |
-| remind       | remind you something                                             |
-| meet         | create google meet automatically|
-| music        |  download youtube audio                                          |
-| translate    | translate service by Google                                      |
-| wiki         |  search article in wikipedia                                     |
+| Command       | Function                                                         |
+|---------------|------------------------------------------------------------------|
+| /calc         | solve simple math instantly                                      |
+| /covid        | check current covid statistic in Malaysia                        |
+| /shau         | designed for Jabatan Perdana Menteri Hal Ehwal Agama             |
+| /dict         | find word definition                                             |
+| /kamus        | cari definisi perkataan                                          |
+| /lyrics       | find lyrics for your favourite music                             |
+| /remind       | remind you something                                             |
+| /meet         | create google meet automatically|
+| /music        |  download youtube audio                                          |
+| /translate    | translate service by Google                                      |
+| /wiki         |  search article in wikipedia                                     |
 
 
 ## Thanks to
