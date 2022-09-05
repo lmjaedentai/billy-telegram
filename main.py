@@ -4,11 +4,10 @@ import os
 import sys
 sys.path.append('./module')
 import csv
-import json
+import pytz
 import random
 import urllib
 import asyncio
-import requests
 import datetime
 import traceback
 import mediawiki
@@ -21,7 +20,8 @@ from pyrogram import Client,filters,emoji, errors
 from pyrogram.types import Message, InlineKeyboardButton, KeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup,InlineQuery, InlineQueryResultArticle,InlineQueryResultPhoto, InputTextMessageContent, ForceReply, ReplyKeyboardRemove
 from module.pytube import YouTube, exceptions
 from module.google_trans_new import google_translator  
-  
+
+#LINK https://www.youtube.com/watch?v=qeBjVJkOAGc
 
 #QQ before we start
 telegraph = Telegraph()
@@ -53,7 +53,7 @@ def error_handling(func):
 def shau():
     emoji = ['🖕', '🖕🏻', '🖕🏼','🖕🏽','🖕🏾','🖕🏿']
     content = emoji[random.randint(0,5)]
-    for a in range(53):
+    for a in range(59):
         content = content + emoji[random.randint(0,5)]
     return content
 
@@ -77,30 +77,10 @@ def getsticker():
         final.append(InlineQueryResultPhoto(photo_url=sticker))
     return final
         
-def checkvalid(url):
-    try:
-        title = YouTube(url).title 
-    except exceptions.RegexMatchError:
-        return False
-    else:
-        return True
+
 
 
 #QQ slash cmd
-@app.on_message(filters.command("covid"))
-async def covid(client, message):
-    def readcsv(url):
-        with urllib.request.urlopen(url) as f:
-            last = f.readlines()[-1]
-            last2 = last.decode("utf-8") 
-            data = last2.split(",")
-            return data
-
-    cases = readcsv('https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/epidemic/cases_malaysia.csv')
-    deaths = readcsv('https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/epidemic/deaths_malaysia.csv')
-    await message.reply(f'**🏥 <u>Active: {cases[4]}</u>** \n\n🔴 New cases: `{cases[1]}`\n🟢 Recovered: `{cases[3]}`\n⚫ Death: `{deaths[1]}`\n\nstay home to stay safe'
-                    ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ more info",url="https://covidnow.moh.gov.my/")]]))
-
 @app.on_message(filters.command("shau"))
 @error_handling
 async def sendshau(client, message):
@@ -115,59 +95,116 @@ async def sendshau(client, message):
 @error_handling
 async def dictionary(client, message):
     dictionary = MultiDictionary()
-    query = await app.ask(message.chat.id, "🔎 Which word you want to define?",reply_markup = ForceReply(placeholder="Reply me here!"))
+    query = await app.ask(message.chat.id, "🔎 Enter a word to define",filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer"),)
     typing = await app.send_message(message.chat.id,'searching...')
     try:
         rawresult = dictionary.meaning('en',query.text, dictionary=DICT_WORDNET)
     except IndexError:
         await message.reply(f'❌ **No search result**',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={query.text.replace(" ","%20")}')]]))
     else:
-        zh = translator.translate(query.text,lang_tgt='zh')
+        text = ''
+        success = False
+        with open('dict.csv', 'r', encoding='utf-8') as f:
+            for row in csv.reader(f, delimiter=","):
+                if query.text == row[0]:
+                    success = True
+                    for i in row:
+                        text += i  
+        if success:
+            zh = text.replace(query.text,'').replace('n.','\nNoun: ').replace('v.','\nVerb: ').replace('adj.','\nAdjective: ').replace('adv.','\nAdverb: ').replace('prep.','\nPreposition: ')
+        else:
+            zh = f"\n{translator.translate(query.text,lang_tgt='zh')}"
         i = 0
         result = ''
-        if 'Noun' in rawresult:
-            result +='Noun\n'
-            for meanings in rawresult['Noun']:
-                i+=1
-                result += f'{i}. {meanings}\n'
-        if 'Verb' in rawresult:
-            result += '\nVerb\n'
-            for meanings in rawresult['Verb']:
-                i+=1
-                result += f'{i}. {meanings}\n'
-        if 'Adjective' in rawresult:
-            result+='\nAdjective\n'
-            for meanings in rawresult['Adjective']:
-                i+=1
-                result += f'{i}. {meanings}\n'
-        if 'Adverb' in rawresult:
-            result+='\nAdverb\n'
-            for meanings in rawresult['Adverb']:
-                i+=1
-                result += f'{i}. {meanings}\n'
-        await app.send_message(message.chat.id,f'📘 **{query.text}** \n\n{result}\n👲🏻 {zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📘 Oxford",url=f'https://www.oxfordlearnersdictionaries.com/definition/english/{query.text.lower().replace(" ","%20")}'),InlineKeyboardButton("🔎 Google",url=f'https://www.google.com/search?q=define%20{query.text.replace(" ","%20")}')]]))
+        for types in ['Noun','Verb','Adjective','Adverb']:
+            if types in rawresult:
+                result+=f'\n{types}\n'
+                for meanings in rawresult[types]:
+                    i+=1
+                    result += f'{i}. {meanings}\n'
+        await app.send_message(message.chat.id,f'📘 **[{query.text}](https://www.oxfordlearnersdictionaries.com/definition/english/{query.text.lower().replace(" ","%20")})** \n{result}‎ ')
+        await app.send_message(message.chat.id,f'👲🏻**中文注释**\n {zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/xzqigogo/dictonary')]]))
     await typing.delete()
 
 @app.on_message(filters.command("kamus"))
 @error_handling
 async def kamus(client, message):
-    dictionary = MultiDictionary()
-    query = await app.ask(message.chat.id, "🔎 Apakah perkataan kamu ingin cari?",reply_markup = ForceReply(placeholder="Reply me here!"))
+    query = await app.ask(message.chat.id, "🔎 Masukkan perkataan yang anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="contoh: Almari"))
     typing = await app.send_message(message.chat.id,'searching...')
-    try:
-        rawresult = dictionary.meaning('ms', query.text)
-    except IndexError:   
+    zh = translator.translate(query.text,lang_tgt='zh') 
+    if zh == query.text or zh == '':
         await message.reply(f'❌ **Carian kata tiada di dalam kamus terkini**',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={query.text.replace(" ","%20")}')]]))
-    else:
-        zh = translator.translate(query.text,lang_tgt='zh')  
-        await app.send_message(message.chat.id,f'📕 **{query.text}** \n\n{rawresult[1][0:4000]}\n\n👲 {zh}', reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text.replace(" ","%20")}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text.replace(" ","%20")}')]]))
+    else: 
+        await app.send_message(message.chat.id,f'📕 **{query.text}** \n\n👲 {zh}\n\n**[➡️ lihat selanjutnya](https://www.ekamus.info/index.php/term/%E9%A9%AC%E6%9D%A5%E6%96%87-%E5%8D%8E%E6%96%87%E5%AD%97%E5%85%B8,{query.text.replace(" ","%20").lower()}.xhtml)**')#, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text.replace(" ","%20")}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text.replace(" ","%20")}')]]))
     await typing.delete()
+
+@app.on_message(filters.command("lyrics"))
+@error_handling
+async def findlyrics(client, message):
+    query = await app.ask(message.chat.id, "🎸 Tell me the song title __follow by the name of artist (optional)__",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="Perfect Ed Sheeran"))
+    typing = await app.send_message(message.chat.id,'searching...')
+    lyrics = genius.search_song(query.text, get_full_info=True)
+    if lyrics is None or len(lyrics.lyrics) > 2045:
+        await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**[😀 Mojim.com](https://mojim.com/{query.text.replace(' ','%20')}.html?g3)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
+    else:
+        response = telegraph.create_page(query.text, html_content='🎸'+lyrics.lyrics.replace("\n", "<br>"), author_name=lyrics.primary_artist.name, author_url=lyrics.primary_artist.url.replace(' ','%20'))
+        await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/results?search_query={query.text}".replace(' ','%20'))],[InlineKeyboardButton("not this one ☹️",url=f"https://mojim.com/{query.text.replace(' ','%20')}.html?g3")]]))
+    await typing.delete()
+
+@app.on_message(filters.command("music")) #https://www.youtube.com/watch?v=wiHYx9NX4DM
+@error_handling
+async def music(client, message):
+    def checkvalid(url):
+        try:
+            YouTube(url).title 
+        except exceptions.RegexMatchError:
+            return message.reply("❌ **Invalid query.** \nWe only support videos from Youtube.")
+        else:
+            return url
+    #download
+    query = await app.ask(message.chat.id, "🎺 Enter **link** from Youtube",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="paste link here"))
+    url = checkvalid(query.text)
+    status = await query.reply("⬇️  downloading media...")
+    music = YouTube(url).streams.filter(file_extension='mp4').order_by('resolution').desc().first().download()
+    # await status.delete()
+    #convert
+    status = await status.edit_text("➡️  sending media...")
+    base, ext = os.path.splitext(music)
+    new_file = base + '.mp3'
+    os.rename(music, new_file)
+    #send
+    await query.reply_document(new_file,caption=YouTube(query.text).title,force_document=False)
+    await status.delete()
+    os.remove(new_file)
+
+
+
+@app.on_message(filters.command("other"))
+@error_handling
+async def others(client, message):
+    i = await message.reply('Select the feature you want',reply_markup=ReplyKeyboardMarkup([['/help'],['/calc'],['/kamus'],['/translate'],['/covid'],['/wiki'],['/peribahasa']],resize_keyboard=True))
+    await asyncio.sleep(2)
+    await i.delete()
+
+@app.on_message(filters.command("covid"))
+async def covid(client, message):
+    def readcsv(url):
+        with urllib.request.urlopen(url) as f:
+            last = f.readlines()[-1]
+            last2 = last.decode("utf-8") 
+            data = last2.split(",")
+            return data
+
+    cases = readcsv('https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/epidemic/cases_malaysia.csv')
+    deaths = readcsv('https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/epidemic/deaths_malaysia.csv')
+    await message.reply(f'**🏥 <u>Active: {cases[4]}</u>** \n\n🔴 New cases: `{cases[1]}`\n🟢 Recovered: `{cases[3]}`\n⚫ Death: `{deaths[1]}`\n\nstay home to stay safe'
+                    ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ more info",url="https://covidnow.moh.gov.my/")]]))
 
 @app.on_message(filters.command("wiki"))
 @error_handling
 async def wiki(client, message):
     wiki = MediaWiki()
-    search = await app.ask(message.chat.id, "🔎 Which article you want to search ?",reply_markup = ForceReply(placeholder="Reply me here!"))
+    search = await app.ask(message.chat.id, "🔎 Enter name of article to search ",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="exp: Tiananmen square"))
     try:
         content = wiki.summary(search.text, sentences=5)
     except mediawiki.DisambiguationError as error:
@@ -180,52 +217,10 @@ async def wiki(client, message):
         result = wiki.page(search.text)
         await app.send_message(message.chat.id,f'📖 **{result.title}**\n\n{content}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📖 Wikipedia",url=result.url.replace(' ','%20'))]]))
 
-@app.on_message(filters.command("lyrics"))
-@error_handling
-async def findlyrics(client, message):
-    query = await app.ask(message.chat.id, "🎸 Which song lyrics you want?",reply_markup = ForceReply(placeholder="Enter a song name"))
-    typing = await app.send_message(message.chat.id,'searching...')
-    lyrics = genius.search_song(query.text, get_full_info=True)
-    if lyrics is None or len(lyrics.lyrics) > 2045:
-        await message.reply(f'❌ **No search result**',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
-    else:
-        # formatlyrics = '**🎸 '+lyrics.lyrics.replace("Embed", "").replace('Lyrics',f"Lyrics**\n🎤 [{lyrics.primary_artist.name}]({lyrics.primary_artist.url.replace(' ','%20')})\n")
-        # url = f"\n[🎧](https://www.youtube.com/results?search_query={query.text})".replace(' ','%20')
-        # await message.reply(formatlyrics+url, disable_web_page_preview=True)
-        response = telegraph.create_page(query.text, html_content='🎸'+lyrics.lyrics.replace("\n", "<br>"), author_name=lyrics.primary_artist.name, author_url=lyrics.primary_artist.url.replace(' ','%20'))
-        await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/results?search_query={query.text}".replace(' ','%20'))]]))
-    await typing.delete()
-        
-@app.on_message(filters.command("meet"))
-@error_handling
-async def createmeet(client, message):
-    await message.reply_photo("https://piunikaweb.com/wp-content/uploads/2020/11/google-meet.png",caption='support MOE only.'
-    ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🐢 click to join",url=f'https://accounts.google.com/AccountChooser/signinchooser?continue=https://g.co/meet/pythongroup')]]))
-
-@app.on_message(filters.command("music")) #https://www.youtube.com/watch?v=6Q0Pd53mojY
-@error_handling
-async def music(client, message):
-    #download
-    query = await app.ask(message.chat.id, "🎺 What is the **url** of youtube mp3 you want to download?",reply_markup = ForceReply(placeholder="Reply me here!"))
-    if checkvalid(query.text) == False:
-        return await message.reply("❌ **Invalid url.** We only support videos from Youtube. ")
-    status = await message.reply("⬇️  downloading media...")
-    music = YouTube(query.text).streams.filter(file_extension='mp4').order_by('resolution').desc().first().download()
-    await status.delete()
-    #convert
-    status = await message.reply("➡️  sending media...")
-    base, ext = os.path.splitext(music)
-    new_file = base + '.mp3'
-    os.rename(music, new_file)
-    #send
-    await query.reply_document(new_file,caption=YouTube(query.text).title,force_document=True)
-    await status.delete()
-    os.remove(new_file)
-
 @app.on_message(filters.command("calc"))
 @error_handling
 async def calc(client, message):
-    query = await app.ask(message.chat.id, "🔢 Type your formula here. ",reply_markup = ForceReply(placeholder='send me "how" for instruction '))
+    query = await app.ask(message.chat.id, "🔢 Type your formula here. ",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder='send "how" for instruction '))
     if "how" in query.text.lower():
         return await app.send_message(message.chat.id, "https://telegra.ph/Calc-in-Billy-KaiCheng-07-10")
     try:
@@ -242,36 +237,36 @@ async def calc(client, message):
 async def translate(client, message):
     async def asklang():
         global code
-        lang = await app.ask(message.chat.id,'Select the language you want translate **to**',reply_markup=ReplyKeyboardMarkup([['🇬🇧 English','🇲🇾 Bahasa Melayu','🇹🇼 正体中文']],resize_keyboard=True))
-        if lang.text == '🇬🇧 English':
+        choice = await app.ask(message.chat.id,'Select the language you want translate **to**',filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['🇬🇧 English','🇲🇾 Bahasa Melayu','🇹🇼 正体中文']],resize_keyboard=True))
+        if choice.text == '🇬🇧 English':
             return 'en'
-        elif lang.text == '🇲🇾 Bahasa Melayu':
+        elif choice.text == '🇲🇾 Bahasa Melayu':
             return 'ms'
-        elif lang.text == '🇹🇼 正体中文':
+        elif choice.text == '🇹🇼 正体中文':
             return 'zh-tw'
         else:
             await asklang()
     code = await asklang()
-    query = await app.ask(message.chat.id, f"🔣 Enter the word you want to translate to {code}",reply_markup = ForceReply(placeholder="I love to eat carrot"))
+    query = await app.ask(message.chat.id, f"🔣 Enter the word translate to {code}",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="I love to eat carrot"))
     await app.send_message(message.chat.id,f'{query.text}\n⇓\n{translator.translate(query.text,lang_tgt=code)}')
 
 @app.on_message(filters.command("remind"))
 @error_handling
-async def remind(client, message): #FIXME  UTC 8
-    query = await app.ask(message.chat.id, f"🔔 What you want me to remind you?",reply_markup = ForceReply(placeholder="**Note:** Currently this feature is not stable due to our cheap server"))
+async def remind(client, message):
+    query = await app.ask(message.chat.id, f"🔔 What you want me to remind you?",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="this feature is unstable"))
     reminder = query.text
-    # rawtime = await app.ask(message.chat.id, f"🕒 How soon should I remind you?",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("wdym 🤔",callback_data="data")]]))
-    rawtime = await app.ask(message.chat.id, f"🕒 How soon should I remind you?",reply_markup = ForceReply(placeholder="1m for 1min, 1h for 1h, 1d for 1day"))
+    rawtime = await app.ask(message.chat.id, f"🕒 How soon should I remind you?",filters=filters.user(message.from_user.id),reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("wdym 🤔",callback_data="data")]]))
     time = rawtime.text
-
-    time_convert = {"s":1, "m":60, "h":3600,"d":86400} #FIXME auto round up
+    time_convert = {"s":1, "m":60, "h":3600,"d":86400}
     try:
-        seconds = int(time[0]) * time_convert[time[-1]]
+        seconds = int(time[:-1]) * time_convert[time[-1]]
+        print('[second]',seconds)
     except (ValueError, KeyError,TypeError):
         await app.send_message(message.chat.id,f"Click this to see instructions 👇🏻",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
         return
-    date = datetime.datetime.now() + datetime.timedelta(seconds = seconds)
-    date = round(date.timestamp())
+    test = pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now())
+    rawdate = test + datetime.timedelta(seconds = seconds)
+    date = round(rawdate.timestamp())
 
     if seconds <= 0:
         await app.send_message(message.chat.id,f'❌ No zero or negative value')
@@ -280,7 +275,7 @@ async def remind(client, message): #FIXME  UTC 8
     else:
         await app.send_message(message.chat.id,f"🔔 Alright, I will remind you **{reminder}** in **{time}** at **{datetime.datetime.fromtimestamp(date)}**")
         await asyncio.sleep(seconds)
-    await query.reply(f'🔔 Reminder for [{reminder}]({query.link})\n🕒 set **{time}** ago\n\ndont forget lol')
+    await query.reply(f'🔔 Reminder for [{reminder}]({query.link})\n🕒 set **{time}** ago\n\n`dont forget lol`',disable_web_page_preview=True)
 
 @app.on_callback_query()
 async def reminder_instructions(client, callback_query):
@@ -293,9 +288,9 @@ async def numbase(client, message):
             BS="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
             return "0" if not n else switchbase(n//b, b).lstrip("0") + BS[n%b]
 
-    frombase = await app.ask(message.chat.id, "from base:  ",reply_markup=ReplyKeyboardMarkup([['10','2'],['8','16']]))
-    tobase =     await app.ask(message.chat.id, "to base:  ",reply_markup=ReplyKeyboardMarkup([['10','2'],['8','16']], one_time_keyboard=True))
-    value = await app.ask(message.chat.id, f"🔣 Enter the your value",reply_markup = ForceReply(placeholder="example: 01010010"))
+    frombase = await app.ask(message.chat.id, "from base:  ",filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['10','2'],['8','16']]))
+    tobase =     await app.ask(message.chat.id, "to base:  ",filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['10','2'],['8','16']], one_time_keyboard=True))
+    value = await app.ask(message.chat.id, f"🔣 Enter the your value",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="example: 01010010"))
     try:
         answer = switchbase(int(value.text, int(frombase.text)) , int(tobase.text))
     except (SyntaxError, ValueError):
@@ -305,24 +300,34 @@ async def numbase(client, message):
     else:
         await app.send_message(message.chat.id,f'original: {value.text}\nanswer: **{answer}**\n\n`(from base {frombase.text} to {tobase.text})`')
 
-
-@app.on_message(filters.command("start"))
+@app.on_message(filters.command(["start"]))
 @error_handling
 async def test(client, message):
     await app.send_message(message.chat.id,'Glad to meet you. Have a nice day!',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ️ insturctions",url=f'https://github.com/lmjaedentai/billy-telegram#readme')]]), disable_web_page_preview=True)
 
+@app.on_message(filters.command("help"))
+@error_handling
+async def help(client, message):
+    choice = await app.ask(message.chat.id,'How can i help you?',filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['help'],['feedback'],['about us']],resize_keyboard=True,one_time_keyboard=True))
+    if choice.text == 'about us':
+        await app.send_message(message.chat.id,'https://telegra.ph/Billy-KaiCheng-09-04')
+    elif choice.text == 'feedback':
+        await app.send_message(message.chat.id,'https://github.com/lmjaedentai/billy-telegram/issues/new/choose')
+    else:
+        await app.send_message(message.chat.id,'https://github.com/lmjaedentai/billy-telegram#readme')
+
+@app.on_message(filters.command("peribahasa"))
+@error_handling
+async def peribahasa(client, message):
+    query = await app.ask(message.chat.id, "🔎 Masukkan peribahasa yg anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="by maksudperibahasa.com"))
+    await app.send_message(message.chat.id,f"📕 **{query.text}** \n\nhttps://maksudperibahasa.com/?s={query.text.replace(' ','-')}/")
+    await app.send_message(message.chat.id,f"👲 **中文注释** \n\nhttps://www.ekamus.info/index.php/term/Simpulan+Bahasa+%26amp%3B+Peribahasa,{query.text.replace(' ','+')}.xhtml")
 
 
 
 
 
 #QQ other cmd
-@app.on_message(filters.chat([-1001197820173]) & filters.new_chat_members)
-async def welcome(client, message):
-    MENTION = "[{}](tg://user?id={})"  # User mention markup
-    new_members = [u.mention for u in message.new_chat_members]
-    await message.reply(f'🥳 ✨ Welcome to the shittest place in telegram {new_members} ! 🚀  💩', disable_web_page_preview=True)
-
 @app.on_message(filters.text)
 @error_handling
 async def on_message(client, message):
@@ -331,6 +336,9 @@ async def on_message(client, message):
             '.id': lambda: message.reply(message.chat.id),
             '.err': lambda: this_is_an_error(),
             '.shutdown': lambda: shutdown(client,message),
+            'feedback': lambda: app.send_message(message.chat.id,'https://github.com/lmjaedentai/billy-telegram/issues/new/choose'),
+            'about us': lambda: app.send_message(message.chat.id,'https://telegra.ph/Billy-KaiCheng-09-04'),
+            'help': lambda: app.send_message(message.chat.id,'https://github.com/lmjaedentai/billy-telegram#readme'),
         }
         try:
             await switcher[argument]()
