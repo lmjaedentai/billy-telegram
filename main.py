@@ -141,7 +141,7 @@ async def kamus(client, message):
 @app.on_message(filters.command("lyrics"))
 @error_handling
 async def findlyrics(client, message):
-    query = await app.ask(message.chat.id, "🎸 Tell me the song title __follow by the name of artist (optional)__",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="Perfect Ed Sheeran"))
+    query = await app.ask(message.chat.id, "🎸 Tell me the **song title** __follow by the name of artist (optional)__",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="Perfect Ed Sheeran"))
     typing = await app.send_message(message.chat.id,'searching...')
     lyrics = genius.search_song(query.text, get_full_info=True)
     if lyrics is None or len(lyrics.lyrics) > 2045:
