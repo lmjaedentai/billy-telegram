@@ -1,6 +1,6 @@
 name: Feature request 🧭
 description: Suggest an idea for this project
-labels: feature request, to review
+labels: Feature request, From user
 body:
 - type: textarea
   attributes:
