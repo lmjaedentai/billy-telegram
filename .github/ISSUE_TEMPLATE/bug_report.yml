@@ -1,6 +1,6 @@
 name: Report a bug 🐛
 description: Create a report to help us improve
-labels: bug, to review
+labels: Bug, To review
 body:
 - type: markdown
   attributes:
