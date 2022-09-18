@@ -1,6 +1,4 @@
 print('==========start==========')
-from faulthandler import disable
-import re
 import os
 import sys
 sys.path.append('./module')
@@ -15,6 +13,7 @@ import mediawiki
 import lyricsgenius as lg
 from telegraph import Telegraph
 from mediawiki import MediaWiki
+from word_forms.lemmatizer import lemmatize
 from PyMultiDictionary import MultiDictionary, DICT_WORDNET
 from pyromod import listen
 from pyrogram import Client,filters,emoji, errors
@@ -32,8 +31,8 @@ translator = google_translator(url_suffix="my")
 app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
 # app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
 with app:
-    app.send_message(-1001518766606, "login\ndevice: heroku")
-    # app.send_message(-1001518766606, "login\ndevice: [repl.it](https://replit.com/@lmjaedentai/Billy-Telegram#main.py)", disable_web_page_preview=True,disable_notification=True)
+    app.send_message(-1001518766606, "#login\ndevice: heroku")
+    # app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/Billy-Telegram#main.py)", disable_web_page_preview=True,disable_notification=True)
     print('==========login==========')
 
 
@@ -80,7 +79,6 @@ def getsticker():
         
 
 
-
 #QQ slash cmd
 @app.on_message(filters.command("shau"))
 @error_handling
@@ -95,15 +93,10 @@ async def sendshau(client, message):
 @app.on_message(filters.command("dict"))
 @error_handling
 async def dictionary(client, message):
+    targetlist = ['n.','adv.','adj.','v.','prep.','int.','conj.','art.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.','[','|| ','] ','/']
+    replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n\nInterjection: ','\n\nConjunction: ','\n\nArticles:','\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.','\n • ','\n\nExample:\n • ','\n • ','/ ']
     dictionary = MultiDictionary()
-    query = await app.ask(message.chat.id, "🔎 Enter a word to define",filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer"),)
-    typing = await app.send_message(message.chat.id,'searching...')
-    search = query.text.lower()
-    try:
-        rawresult = dictionary.meaning('en',search, dictionary=DICT_WORDNET)
-    except IndexError:
-        await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
-    else:
+    def cndict(search):
         text = ''
         success = False
         with open('dict pro.csv', 'r', encoding='utf-8') as f:
@@ -112,16 +105,30 @@ async def dictionary(client, message):
                     success = True
                     for i in row:
                         text += i  
-                    text = text.replace(row[1],f'__{row[1]}__').replace('[',f'\n[')
+                    text = text.replace(search,'',1).replace(row[1],f'')
+                    break
+                elif f'{search} 1'== row[0]:
+                    success = True
+                    for i in row:
+                        text += i  
+                    text = text.replace(f'{search} 1','',1).replace(row[1],f'')
+                    search = f'{search} 2'
         if success:
-            targetlist = ['n.','adv.','adj.','v.','prep.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.']
-            replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.']
-            zh = text.replace(search,'')
             for i in range(len(targetlist)):
-                zh = zh.replace(targetlist[i],replacelist[i])
-            # print(zh)
+                text = text.replace(targetlist[i],replacelist[i])
+            return text
         else:
-            zh = f"\n{translator.translate(search,lang_tgt='zh')}"
+            return False
+
+    query = await app.ask(message.chat.id, "🔎 Enter a word to define",filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer"),)
+    typing = await app.send_message(message.chat.id,'searching...')
+    search = query.text.lower()
+    #english dict
+    try:
+        rawresult = dictionary.meaning('en',search, dictionary=DICT_WORDNET)
+    except IndexError: #no result
+        pass
+    else:
         i = 0
         result = ''
         for types in ['Noun','Verb','Adjective','Adverb']:
@@ -131,7 +138,19 @@ async def dictionary(client, message):
                     i+=1
                     result += f'{i}. {meanings}\n'
         await app.send_message(message.chat.id,f'📘 **[{search}](https://www.oxfordlearnersdictionaries.com/definition/english/{search.replace(" ","%20")})** \n{result}‎ ')
-        await app.send_message(message.chat.id,f'👲🏻**中文注释**\n{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
+    #cn dict
+    zh = cndict(search)
+    if zh == False or zh == '': #no result
+        try:
+            zh = cndict(lemmatize(search)) #try base form / lemma word
+        except ValueError: #word_form module: no word in this world
+            return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
+        else:
+            if zh == False: #dict.pro do not hav
+                zh = f"\n{translator.translate(search,lang_tgt='zh')}"
+                if zh.lower().strip() == search.strip() or zh=='':  #google trans do not hav
+                    return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
+    await app.send_message(message.chat.id,f'👲🏻**中文注释**{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
     await typing.delete()
 
 @app.on_message(filters.command("kamus"))
@@ -140,8 +159,8 @@ async def kamus(client, message):
     query = await app.ask(message.chat.id, "🔎 Masukkan perkataan yang anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="contoh: Almari"))
     typing = await app.send_message(message.chat.id,'searching...')
     zh = translator.translate(query.text,lang_tgt='zh') 
-    if zh == query.text or zh == '':
-        await message.reply(f'❌ **Carian kata tiada di dalam kamus terkini**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={query.text.replace(" ","%20")}')]]))
+    if zh.lower().strip() == query.text.lower().strip() or zh=='': 
+        await app.send_message(message.chat.id,f'❌ **Carian kata tiada di dalam kamus terkini**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={query.text.replace(" ","%20")}')]]))
     else: 
         await app.send_message(message.chat.id,f'📕 **{query.text}** \n\n👲 {zh}\n\n**[➡️ lihat selanjutnya](https://www.ekamus.info/index.php/term/%E9%A9%AC%E6%9D%A5%E6%96%87-%E5%8D%8E%E6%96%87%E5%AD%97%E5%85%B8,{query.text.replace(" ","%20").lower()}.xhtml)**')#, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text.replace(" ","%20")}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text.replace(" ","%20")}')]]))
     await typing.delete()
@@ -177,13 +196,13 @@ async def music(client, message):
     # await status.delete()
     #convert
     status = await status.edit_text("➡️  sending media...")
-    base, ext = os.path.splitext(music)
-    new_file = base + '.mp3'
-    os.rename(music, new_file)
+    # base, ext = os.path.splitext(music)
+    # new_file = base + '.mp3'
+    # os.rename(music, new_file)
     #send
-    await query.reply_document(new_file,caption=YouTube(query.text).title,force_document=False)
+    await query.reply_document(music,caption=YouTube(query.text).title,force_document=False)
     await status.delete()
-    os.remove(new_file)
+    os.remove(music)
 
 
 
@@ -211,24 +230,20 @@ async def covid(client, message):
 @app.on_message(filters.command("wiki"))
 @error_handling
 async def wiki(client, message):
-    wiki = MediaWiki()
     search = await app.ask(message.chat.id, "🔎 Enter name of article to search ",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="exp: Tiananmen square"))
     try:
-        content = wiki.summary(search.text, sentences=5)
-    except mediawiki.DisambiguationError as error:
-        await message.reply(f'**🤔 Please specify your search query** \n\n{error} \nYour search query matched mutliple pages.')
+        result = MediaWiki().page(search.text)
+    except mediawiki.DisambiguationError as suggestion:
+        await search.reply(f'**🤔 Please specify your search query** \n{suggestion} \n\n**Your search query matched mutliple pages.**\n\n/wiki')
     except mediawiki.PageError:
-        await message.reply(f'❌ **No search result** \n\nTry Google.   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.text.replace(' ','%20')}")]]))
-    except Exception as error:
-        raise Exception(error)
+        await search.reply(f'❌ **No search result** Try Google.',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.text.replace(' ','%20')}")]]))
     else:
-        result = wiki.page(search.text)
-        await app.send_message(message.chat.id,f'📖 **{result.title}**\n\n{content}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📖 Wikipedia",url=result.url.replace(' ','%20'))]]))
+        await app.send_message(message.chat.id,f"📖 **{result.title}**\n\n{result.url.replace(' ','%20')}\n‎")
 
 @app.on_message(filters.command("calc"))
 @error_handling
 async def calc(client, message):
-    query = await app.ask(message.chat.id, "🔢 Type your formula here. ",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder='send "how" for instruction '))
+    query = await app.ask(message.chat.id, "🔢 Type your formula here.\nSupport basic math only. ",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder='send "how" for instruction '))
     if "how" in query.text.lower():
         return await app.send_message(message.chat.id, "https://telegra.ph/Calc-in-Billy-KaiCheng-07-10")
     try:
@@ -236,7 +251,7 @@ async def calc(client, message):
         formula = formula.replace("x","*")
         answer = eval()
     except (ValueError, SyntaxError, NameError, TypeError) as error:
-        await app.send_message(message.chat.id,"❌ Invalid input. \n\n[📗 Cymath Algerbra Solver](https://cymath.com)\n[📱 Android Scienctific Calculator](http://play.google.com/store/apps/details?id=advanced.scientific.calculator.calc991.plus)",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❓ How to use",url=f'https://gist.github.com/lmjaedentai/7a45c849deecf3412f2f30c6ea2ad562#calc-in-billy-kaicheng')]]), disable_web_page_preview=True)
+        await app.send_message(message.chat.id,"❌ Invalid input. \n\n[📗 Cymath Algerbra Solver](https://cymath.com)\n[📱 Android Scienctific Calculator](http://play.google.com/store/apps/details?id=advanced.scientific.calculator.calc991.plus)",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❓ How to use",url=f'https://telegra.ph/Calc-in-Billy-KaiCheng-07-10')]]), disable_web_page_preview=True)
     else:
         await message.reply(answer)
 
@@ -255,39 +270,33 @@ async def translate(client, message):
         else:
             await asklang()
     code = await asklang()
-    query = await app.ask(message.chat.id, f"🔣 Enter the word translate to {code}",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="I love to eat carrot"))
+    query = await app.ask(message.chat.id, f"🔣 Enter the word translate to {code}",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="I love carrot"))
     await app.send_message(message.chat.id,f'{query.text}\n⇓\n{translator.translate(query.text,lang_tgt=code)}')
 
 @app.on_message(filters.command("remind"))
 @error_handling
 async def remind(client, message):
-    query = await app.ask(message.chat.id, f"🔔 What you want me to remind you?",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="this feature is unstable"))
-    reminder = query.text
-    rawtime = await app.ask(message.chat.id, f"🕒 How soon should I remind you?",filters=filters.user(message.from_user.id),reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("wdym 🤔",callback_data="data")]]))
+    reminder = await app.ask(message.chat.id, f"🔔 What should I remind you?",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="this feature is unstable"))
+    rawtime = await app.ask(message.chat.id, f"🕒 Pick a time to remind",filters=filters.user(message.from_user.id),reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("How? 🤔",callback_data="data")]]))
     time = rawtime.text
     time_convert = {"s":1, "m":60, "h":3600,"d":86400}
     try:
         seconds = int(time[:-1]) * time_convert[time[-1]]
-        print('[second]',seconds)
     except (ValueError, KeyError,TypeError):
-        await app.send_message(message.chat.id,f"Click this to see instructions 👇🏻 and try again /remind",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
-        return
-    test = pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now())
-    rawdate = test + datetime.timedelta(seconds = seconds)
-    date = round(rawdate.timestamp())
-
+        return await app.send_message(message.chat.id,f"**❌ Invalid input**\nClick this to see instructions 👇🏻 then try again /remind",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
+    rawdate = pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()) + datetime.timedelta(seconds = seconds) # UTC8 + delaytime
     if seconds <= 0:
         await app.send_message(message.chat.id,f'❌ No zero or negative value')
     elif seconds > 7776000:
         await app.send_message(message.chat.id,f'❌ Maximum duration is 90 days.')
-    else:
-        await app.send_message(message.chat.id,f"🔔 Alright, I will remind you **{reminder}** in **{time}** at **{datetime.datetime.fromtimestamp(date)}**")
+    else: 
+        await app.send_message(message.chat.id,f"🔔 Alright, I will remind you **{reminder.text}** in **{time}** at **{datetime.datetime.fromtimestamp(round(rawdate.timestamp()))}**")
         await asyncio.sleep(seconds)
-    await query.reply(f'🔔 Reminder for [{reminder}]({query.link})\n🕒 set **{time}** ago\n\n`dont forget lol`',disable_web_page_preview=True)
+    await reminder.reply(f'🔔 Reminder for [{reminder.text}]({reminder.link})\n🕒 set **{time}** ago\n\n`dont forget lol`',disable_web_page_preview=True)
 
 @app.on_callback_query()
 async def reminder_instructions(client, callback_query):
-    await callback_query.answer(f"🕒 Time:\n10 second: 10s\n10 minutes: 10m\n10 hours: 10h\n10 days: 10d\n\nYou can enter any value you like, but maximum duration is 90 days.",show_alert=True)
+    await callback_query.answer(f"You can enter any time value you like\nby following format below.\n\nFor example:\n\n10 second  : 10s\n10 minutes : 10m\n10 hours     : 10h\n10 days       : 10d\n\nThis beta feature currently is unstable.",show_alert=True)
 
 @app.on_message(filters.command("base"))
 @error_handling
