@@ -1,7 +1,7 @@
 print('==========start==========')
-import os
+import os 
 import sys
-sys.path.append('./module')
+sys.path.append('./module') 
 import csv
 import pytz
 import random
@@ -21,7 +21,7 @@ from pyrogram.types import Message, InlineKeyboardButton, KeyboardButton,ReplyKe
 from module.pytube import YouTube, exceptions
 from module.google_trans_new import google_translator  
 
-#LINK https://www.youtube.com/watch?v=qeBjVJkOAGc
+#LINK https://www.youtube.com/watch?v=qeBjVJkOAGc oracle
 
 #QQ before we start
 telegraph = Telegraph()
