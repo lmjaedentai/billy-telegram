@@ -20,6 +20,7 @@ from pyrogram import Client,filters,emoji, errors
 from pyrogram.types import Message, InlineKeyboardButton, KeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup,InlineQuery, InlineQueryResultArticle,InlineQueryResultPhoto, InputTextMessageContent, ForceReply, ReplyKeyboardRemove
 from module.pytube import YouTube, exceptions
 from module.google_trans_new import google_translator  
+# from google_trans_new import google_translator  
 
 #LINK https://www.youtube.com/watch?v=qeBjVJkOAGc oracle
 
@@ -30,9 +31,14 @@ genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpY
 translator = google_translator(url_suffix="my") 
 app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
 # app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
+
+#for repl
+import nltk
+nltk.download('omw-1.4')
+
 with app:
-    app.send_message(-1001518766606, "#login\ndevice: heroku")
-    # app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/Billy-Telegram#main.py)", disable_web_page_preview=True,disable_notification=True)
+    # app.send_message(-1001518766606, "#login\ndevice: vscode")
+    app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True)
     print('==========login==========')
 
 
@@ -43,6 +49,11 @@ def error_handling(func):
                 # await app.send_message(-1001518766606,'👤 /'+func.__name__)
                 pass
             await func(app,message,**kwargs)
+        except errors as error:
+            fullerror = "".join(traceback.TracebackException.from_exception(error).format())
+            printerror = await app.send_message(-1001518766606,f'❌ **{error}**\n```\n{fullerror}\n```#error', disable_web_page_preview=True)
+            await app.send_message(message.chat.id,f"⁉️ **[Telegram API error]({printerror.link})**\n\nWe are sorry for that   /help", disable_web_page_preview=True)
+            traceback.print_exception(type(error), error, error.__traceback__, file = sys.stderr)
         except Exception as error:
             fullerror = "".join(traceback.TracebackException.from_exception(error).format())
             printerror = await app.send_message(-1001518766606,f'❌ **{error}**\n```\n{fullerror}\n```#error', disable_web_page_preview=True)
@@ -90,7 +101,7 @@ async def sendshau(client, message):
     remove = await message.reply("times up",reply_markup=ReplyKeyboardRemove())
     await remove.delete()
 
-@app.on_message(filters.command("dict"))
+@app.on_message(filters.command(["dict","d","dictionary"]))
 @error_handling
 async def dictionary(client, message):
     targetlist = ['n.','adv.','adj.','v.','prep.','int.','conj.','art.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.','[','|| ','] ','/']
@@ -142,7 +153,8 @@ async def dictionary(client, message):
     zh = cndict(search)
     if zh == False or zh == '': #no result
         try:
-            zh = cndict(lemmatize(search)) #try base form / lemma word
+            search = lemmatize(search)
+            zh = cndict(search) #try base form / lemma word
         except ValueError: #word_form module: no word in this world
             return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
         else:
@@ -150,10 +162,10 @@ async def dictionary(client, message):
                 zh = f"\n{translator.translate(search,lang_tgt='zh')}"
                 if zh.lower().strip() == search.strip() or zh=='':  #google trans do not hav
                     return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
-    await app.send_message(message.chat.id,f'👲🏻**中文注释**{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
+    await app.send_message(message.chat.id,f'👲🏻**中文注释**\n{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
     await typing.delete()
 
-@app.on_message(filters.command("kamus"))
+@app.on_message(filters.command(["kamus","k"]))
 @error_handling
 async def kamus(client, message):
     query = await app.ask(message.chat.id, "🔎 Masukkan perkataan yang anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="contoh: Almari"))
@@ -170,15 +182,18 @@ async def kamus(client, message):
 async def findlyrics(client, message):
     query = await app.ask(message.chat.id, "🎸 Tell me the **song title** __follow by the name of artist (optional)__",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="Perfect Ed Sheeran"))
     typing = await app.send_message(message.chat.id,'searching...')
-    lyrics = genius.search_song(query.text, get_full_info=True)
-    if lyrics is None or len(lyrics.lyrics) > 2045:
+    try:
+        lyrics = genius.search_song(query.text, get_full_info=True)
+    except:
+        await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**[😀 Try Mojim.com](https://mojim.com/{query.text.replace(' ','%20')}.html?g3)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
+    if lyrics is None:
         await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**[😀 Mojim.com](https://mojim.com/{query.text.replace(' ','%20')}.html?g3)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
     else:
-        response = telegraph.create_page(query.text, html_content='🎸'+lyrics.lyrics.replace("\n", "<br>"), author_name=lyrics.primary_artist.name, author_url=lyrics.primary_artist.url.replace(' ','%20'))
+        response = telegraph.create_page(query.text, html_content='🎸'+lyrics.lyrics.replace("\n", "<br>").replace("Lyrics", "<br>").replace("You might also like", "<br>").replace("Embed", "<br>") , author_name=lyrics.primary_artist.name, author_url=lyrics.primary_artist.url.replace(' ','%20'))
         await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/results?search_query={query.text}".replace(' ','%20'))],[InlineKeyboardButton("not this one ☹️",url=f"https://mojim.com/{query.text.replace(' ','%20')}.html?g3")]]))
     await typing.delete()
 
-@app.on_message(filters.command("music")) #https://www.youtube.com/watch?v=wiHYx9NX4DM
+@app.on_message(filters.command("youtube")) #https://www.youtube.com/watch?v=wiHYx9NX4DM
 @error_handling
 async def music(client, message):
     def checkvalid(url):
@@ -206,7 +221,7 @@ async def music(client, message):
 
 
 
-@app.on_message(filters.command("other"))
+@app.on_message(filters.command(["other","more"]))
 @error_handling
 async def others(client, message):
     i = await message.reply('Select the feature you want',reply_markup=ReplyKeyboardMarkup([['/help'],['/calc'],['/kamus'],['/translate'],['/covid'],['/wiki'],['/peribahasa']],resize_keyboard=True))
@@ -298,40 +313,10 @@ async def remind(client, message):
 async def reminder_instructions(client, callback_query):
     await callback_query.answer(f"You can enter any time value you like\nby following format below.\n\nFor example:\n\n10 second  : 10s\n10 minutes : 10m\n10 hours     : 10h\n10 days       : 10d\n\nThis beta feature currently is unstable.",show_alert=True)
 
-@app.on_message(filters.command("base"))
-@error_handling
-async def numbase(client, message):    
-    def switchbase(n, b): 
-            BS="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            return "0" if not n else switchbase(n//b, b).lstrip("0") + BS[n%b]
-
-    frombase = await app.ask(message.chat.id, "from base:  ",filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['10','2'],['8','16']]))
-    tobase =     await app.ask(message.chat.id, "to base:  ",filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['10','2'],['8','16']], one_time_keyboard=True))
-    value = await app.ask(message.chat.id, f"🔣 Enter the your value",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="example: 01010010"))
-    try:
-        answer = switchbase(int(value.text, int(frombase.text)) , int(tobase.text))
-    except (SyntaxError, ValueError):
-        await app.send_message(message.chat.id,"❌ **Invalid input.** Check your bases and value properly")
-    except RuntimeError:
-        await app.send_message(message.chat.id,"❌ Value is too large. Sorry for that.",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("try this 👍🏻",url=f'https://www.rapidtables.com/convert/number/hex-dec-bin-converter.html')]]))
-    else:
-        await app.send_message(message.chat.id,f'original: {value.text}\nanswer: **{answer}**\n\n`(from base {frombase.text} to {tobase.text})`')
-
-@app.on_message(filters.command(["start"]))
+@app.on_message(filters.command(["start","help"]))
 @error_handling
 async def test(client, message):
-    await app.send_message(message.chat.id,'Glad to meet you. Have a nice day!',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ️ insturctions",url=f'https://github.com/lmjaedentai/billy-telegram#readme')]]), disable_web_page_preview=True)
-
-@app.on_message(filters.command("help"))
-@error_handling
-async def help(client, message):
-    choice = await app.ask(message.chat.id,'How can i help you?',filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['help'],['feedback'],['about us']],resize_keyboard=True,one_time_keyboard=True))
-    if choice.text == 'about us':
-        await app.send_message(message.chat.id,'https://telegra.ph/Billy-KaiCheng-09-04')
-    elif choice.text == 'feedback':
-        await app.send_message(message.chat.id,'https://github.com/lmjaedentai/billy-telegram/issues/new/choose')
-    else:
-        await app.send_message(message.chat.id,'https://github.com/lmjaedentai/billy-telegram#readme')
+    await app.send_message(message.chat.id,'2022 coded in Python\n[source](https://github.com/lmjaedentai/billy-telegram#readme) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • [feedback](https://github.com/lmjaedentai/billy-telegram/issues/new/choose)\n\n**Main Command**\n• dont touch /shau\n• cn to en /dictionary\n• download /youtube\n• search song /lyrics\n\n**/more Subcommand**\n• google /translate\n• simple math /calc\n• malay /kamus\n• real time statistics /covid\n• search for /wiki\n• cari /peribahasa',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("go touch grass 🍃",url=f'https://en.wikipedia.org/wiki/Poaceae')]]), disable_web_page_preview=True)
 
 @app.on_message(filters.command("peribahasa"))
 @error_handling
@@ -353,9 +338,6 @@ async def on_message(client, message):
             '.id': lambda: message.reply(message.chat.id),
             '.err': lambda: this_is_an_error(),
             '.shutdown': lambda: shutdown(client,message),
-            'feedback': lambda: app.send_message(message.chat.id,'https://github.com/lmjaedentai/billy-telegram/issues/new/choose'),
-            'about us': lambda: app.send_message(message.chat.id,'https://telegra.ph/Billy-KaiCheng-09-04'),
-            'help': lambda: app.send_message(message.chat.id,'https://github.com/lmjaedentai/billy-telegram#readme'),
         }
         try:
             await switcher[argument]()
@@ -374,12 +356,29 @@ def sticker(client, inline_query):
     inline_query.answer(is_gallery=True,results=result,cache_time=1)
 
 
+#QQ tracking
+import time
+def foo():
+  print("foo", time.time())
+  app.send_message(-1001518766606, f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')}", disable_web_page_preview=True,disable_notification=True)
+
+def every(delay, task):
+  next_time = time.time() + delay
+  while True:
+    time.sleep(max(0, next_time - time.time()))
+    try:
+      task()
+    except Exception:
+      traceback.print_exc()
+    next_time += (time.time() - next_time) // delay * delay + delay
+
+import threading
+threading.Thread(target=lambda: every(60, foo)).start()
 
 
 
 
-# from online import keep_alive 
-# keep_alive()
+from online import keep_alive 
+keep_alive()
 stickerlist = getsticker()
-
 app.run()
