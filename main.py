@@ -1,13 +1,16 @@
 print('==========start==========')
-import os 
+import os
 import sys
 sys.path.append('./module') 
 import csv
+import time
+import nltk
 import pytz
 import random
 import urllib
 import asyncio
 import datetime
+import threading
 import traceback
 import mediawiki
 import lyricsgenius as lg
@@ -16,11 +19,11 @@ from mediawiki import MediaWiki
 from word_forms.lemmatizer import lemmatize
 from PyMultiDictionary import MultiDictionary, DICT_WORDNET
 from pyromod import listen
-from pyrogram import Client,filters,emoji, errors
+from pyrogram import Client,filters, errors
+from pyrogram.handlers import MessageHandler
 from pyrogram.types import Message, InlineKeyboardButton, KeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup,InlineQuery, InlineQueryResultArticle,InlineQueryResultPhoto, InputTextMessageContent, ForceReply, ReplyKeyboardRemove
 from module.pytube import YouTube, exceptions
 from module.google_trans_new import google_translator  
-# from google_trans_new import google_translator  
 
 #LINK https://www.youtube.com/watch?v=qeBjVJkOAGc oracle
 
@@ -31,15 +34,13 @@ genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpY
 translator = google_translator(url_suffix="my") 
 app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
 # app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
-
-#for repl
-import nltk
-nltk.download('omw-1.4')
+nltk.download('omw-1.4')#for repl
 
 with app:
     # app.send_message(-1001518766606, "#login\ndevice: vscode")
     app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True)
     print('==========login==========')
+    track = app.send_message(-1001518766606, f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True)
 
 
 def error_handling(func):
@@ -49,15 +50,13 @@ def error_handling(func):
                 # await app.send_message(-1001518766606,'👤 /'+func.__name__)
                 pass
             await func(app,message,**kwargs)
-        except errors as error:
-            fullerror = "".join(traceback.TracebackException.from_exception(error).format())
-            printerror = await app.send_message(-1001518766606,f'❌ **{error}**\n```\n{fullerror}\n```#error', disable_web_page_preview=True)
-            await app.send_message(message.chat.id,f"⁉️ **[Telegram API error]({printerror.link})**\n\nWe are sorry for that   /help", disable_web_page_preview=True)
-            traceback.print_exception(type(error), error, error.__traceback__, file = sys.stderr)
         except Exception as error:
             fullerror = "".join(traceback.TracebackException.from_exception(error).format())
             printerror = await app.send_message(-1001518766606,f'❌ **{error}**\n```\n{fullerror}\n```#error', disable_web_page_preview=True)
-            await app.send_message(message.chat.id,f"❌ **[An unexpected error has occur]({printerror.link})** \n```\n{error}\n```\nWe are sorry for that   /help", disable_web_page_preview=True)
+            if isinstance(error, errors.RPCError): #telegram own error
+                await app.send_message(message.chat.id,f"⁉️ **[Telegram API error]({printerror.link})**\n\nWe are sorry for that   /help", disable_web_page_preview=True)
+            else:
+                await app.send_message(message.chat.id,f"❌ **[An unexpected error has occur]({printerror.link})** \n```\n{error}\n```\nWe are sorry for that   /help", disable_web_page_preview=True)
             traceback.print_exception(type(error), error, error.__traceback__, file = sys.stderr)
     return inner
 
@@ -75,19 +74,6 @@ async def shutdown(app,message):
         sys.exit(f'shut down by **[{message.from_user.username}]**')
     else:
         await message.reply('❌ No admin rights')
-
-def getsticker():
-    with open('sticker.csv') as csv_file:
-        urllist = list()
-        final = list()
-        final.append(InlineQueryResultArticle(title='晨曦云',thumb_url='https://i.imgur.com/ZqGgNt5.jpg', input_message_content=InputTextMessageContent(shau())))
-        for i in csv.reader(csv_file, delimiter=','):
-            urllist.append(i[0])
-        
-    for sticker in urllist:
-        final.append(InlineQueryResultPhoto(photo_url=sticker))
-    return final
-        
 
 
 #QQ slash cmd
@@ -130,10 +116,15 @@ async def dictionary(client, message):
             return text
         else:
             return False
-
-    query = await app.ask(message.chat.id, "🔎 Enter a word to define",filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer"),)
+    
+    #asking for query
+    if message.text.lower().strip() in ["/dict","/d","/dictionary"]: #input == ONLY command
+        query = await app.ask(message.chat.id, "🔎 Enter a word to define",filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer"),)
+        search = query.text.lower().strip()
+    else: #args is given together with cmd
+        search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
     typing = await app.send_message(message.chat.id,'searching...')
-    search = query.text.lower()
+
     #english dict
     try:
         rawresult = dictionary.meaning('en',search, dictionary=DICT_WORDNET)
@@ -162,35 +153,51 @@ async def dictionary(client, message):
                 zh = f"\n{translator.translate(search,lang_tgt='zh')}"
                 if zh.lower().strip() == search.strip() or zh=='':  #google trans do not hav
                     return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
+        finally:
+            await typing.delete()
     await app.send_message(message.chat.id,f'👲🏻**中文注释**\n{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
     await typing.delete()
 
 @app.on_message(filters.command(["kamus","k"]))
 @error_handling
 async def kamus(client, message):
-    query = await app.ask(message.chat.id, "🔎 Masukkan perkataan yang anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="contoh: Almari"))
+    #asking for query
+    if message.text.lower().strip() in ["/kamus","/k"]: #input == ONLY command
+        query = await app.ask(message.chat.id, "🔎 Masukkan perkataan yang anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="contoh: Almari"))
+        search = query.text.lower().strip()
+    else: #args is given together with cmd
+        search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
     typing = await app.send_message(message.chat.id,'searching...')
-    zh = translator.translate(query.text,lang_tgt='zh') 
-    if zh.lower().strip() == query.text.lower().strip() or zh=='': 
-        await app.send_message(message.chat.id,f'❌ **Carian kata tiada di dalam kamus terkini**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={query.text.replace(" ","%20")}')]]))
+
+
+    zh = translator.translate(search,lang_tgt='zh') 
+    if zh.lower().strip() == search or zh=='': 
+        await app.send_message(message.chat.id,f'❌ **Carian kata tiada di dalam kamus terkini**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
     else: 
-        await app.send_message(message.chat.id,f'📕 **{query.text}** \n\n👲 {zh}\n\n**[➡️ lihat selanjutnya](https://www.ekamus.info/index.php/term/%E9%A9%AC%E6%9D%A5%E6%96%87-%E5%8D%8E%E6%96%87%E5%AD%97%E5%85%B8,{query.text.replace(" ","%20").lower()}.xhtml)**')#, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text.replace(" ","%20")}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text.replace(" ","%20")}')]]))
+        await app.send_message(message.chat.id,f'📕 **{search}** \n\n👲 {zh}\n\n**➡️ [lihat selanjutnya](https://www.ekamus.info/index.php/term/%E9%A9%AC%E6%9D%A5%E6%96%87-%E5%8D%8E%E6%96%87%E5%AD%97%E5%85%B8,{search.replace(" ","%20").lower()}.xhtml)**')#, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text.replace(" ","%20")}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text.replace(" ","%20")}')]]))
     await typing.delete()
 
-@app.on_message(filters.command("lyrics"))
+@app.on_message(filters.command(["lyrics","l"]))
 @error_handling
 async def findlyrics(client, message):
-    query = await app.ask(message.chat.id, "🎸 Tell me the **song title** __follow by the name of artist (optional)__",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="Perfect Ed Sheeran"))
+    #asking for query
+    if message.text.lower().strip() in ["/lyrics","/l"]: #input == ONLY command
+        query = await app.ask(message.chat.id, "🎸 Tell me the **song title** __follow by the name of artist (optional)__",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="Perfect Ed Sheeran"))
+        search = query.text.lower().strip()
+    else: #args is given together with cmd
+        search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
     typing = await app.send_message(message.chat.id,'searching...')
+
+
     try:
-        lyrics = genius.search_song(query.text, get_full_info=True)
+        lyrics = genius.search_song(search, get_full_info=True)
     except:
-        await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**[😀 Try Mojim.com](https://mojim.com/{query.text.replace(' ','%20')}.html?g3)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
-    if lyrics is None:
-        await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**[😀 Mojim.com](https://mojim.com/{query.text.replace(' ','%20')}.html?g3)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
+        await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**😀 [Try Mojim.com](https://mojim.com/{search.replace(' ','%20')}.html?g3)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
     else:
-        response = telegraph.create_page(query.text, html_content='🎸'+lyrics.lyrics.replace("\n", "<br>").replace("Lyrics", "<br>").replace("You might also like", "<br>").replace("Embed", "<br>") , author_name=lyrics.primary_artist.name, author_url=lyrics.primary_artist.url.replace(' ','%20'))
-        await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/results?search_query={query.text}".replace(' ','%20'))],[InlineKeyboardButton("not this one ☹️",url=f"https://mojim.com/{query.text.replace(' ','%20')}.html?g3")]]))
+        if lyrics is None:
+            return await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**😀 [Mojim.com](https://mojim.com/{search.replace(' ','%20')}.html?g3)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
+        response = telegraph.create_page(search, html_content='🎸'+lyrics.lyrics.replace("\n", "<br>").replace("Lyrics", "<br>").replace("You might also like", "<br>").replace("Embed", "<br>") , author_name=lyrics.primary_artist.name, author_url=lyrics.primary_artist.url.replace(' ','%20'))
+        await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/results?search_query={search}".replace(' ','%20'))],[InlineKeyboardButton("not this one ☹️",url=f"https://mojim.com/{search.replace(' ','%20')}.html?g3")]]))
     await typing.delete()
 
 @app.on_message(filters.command("youtube")) #https://www.youtube.com/watch?v=wiHYx9NX4DM
@@ -245,13 +252,20 @@ async def covid(client, message):
 @app.on_message(filters.command("wiki"))
 @error_handling
 async def wiki(client, message):
-    search = await app.ask(message.chat.id, "🔎 Enter name of article to search ",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="exp: Tiananmen square"))
+    #asking for query
+    if message.text.lower().strip() in ["/wiki"]: #input == ONLY command
+        query = await app.ask(message.chat.id, "🔎 Enter name of article to search ",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="exp: Tiananmen square"))
+        search = query.text.lower().strip()
+    else: #args is given together with cmd
+        search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
+
+
     try:
-        result = MediaWiki().page(search.text)
+        result = MediaWiki().page(search)
     except mediawiki.DisambiguationError as suggestion:
         await search.reply(f'**🤔 Please specify your search query** \n{suggestion} \n\n**Your search query matched mutliple pages.**\n\n/wiki')
     except mediawiki.PageError:
-        await search.reply(f'❌ **No search result** Try Google.',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.text.replace(' ','%20')}")]]))
+        await search.reply(f'❌ **No search result** Try Google.',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.replace(' ','%20')}")]]))
     else:
         await app.send_message(message.chat.id,f"📖 **{result.title}**\n\n{result.url.replace(' ','%20')}\n‎")
 
@@ -288,6 +302,18 @@ async def translate(client, message):
     query = await app.ask(message.chat.id, f"🔣 Enter the word translate to {code}",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="I love carrot"))
     await app.send_message(message.chat.id,f'{query.text}\n⇓\n{translator.translate(query.text,lang_tgt=code)}')
 
+@app.on_message(filters.command(["start","help"]))
+@error_handling
+async def test(client, message):
+    await app.send_message(message.chat.id,'2022 coded in Python\n[source](https://github.com/lmjaedentai/billy-telegram#readme) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • [feedback](https://github.com/lmjaedentai/billy-telegram/issues/new/choose)\n\n**Main Command**\n• dont touch /shau\n• cn to en /dictionary\n• download /youtube\n• search song /lyrics\n\n**/more Subcommand**\n• google /translate\n• simple math /calc\n• malay /kamus\n• real time statistics /covid\n• search for /wiki\n• cari /peribahasa',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("go touch grass 🍃",url=f'https://en.wikipedia.org/wiki/Poaceae')]]), disable_web_page_preview=True)
+
+@app.on_message(filters.command("peribahasa"))
+@error_handling
+async def peribahasa(client, message):
+    query = await app.ask(message.chat.id, "🔎 Masukkan peribahasa yg anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="by maksudperibahasa.com"))
+    await app.send_message(message.chat.id,f"📕 **{query.text}** \n\nhttps://maksudperibahasa.com/?s={query.text.replace(' ','-')}/")
+    await app.send_message(message.chat.id,f"👲 **中文注释** \n\nhttps://www.ekamus.info/index.php/term/Simpulan+Bahasa+%26amp%3B+Peribahasa,{query.text.replace(' ','+')}.xhtml")
+
 @app.on_message(filters.command("remind"))
 @error_handling
 async def remind(client, message):
@@ -313,17 +339,6 @@ async def remind(client, message):
 async def reminder_instructions(client, callback_query):
     await callback_query.answer(f"You can enter any time value you like\nby following format below.\n\nFor example:\n\n10 second  : 10s\n10 minutes : 10m\n10 hours     : 10h\n10 days       : 10d\n\nThis beta feature currently is unstable.",show_alert=True)
 
-@app.on_message(filters.command(["start","help"]))
-@error_handling
-async def test(client, message):
-    await app.send_message(message.chat.id,'2022 coded in Python\n[source](https://github.com/lmjaedentai/billy-telegram#readme) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • [feedback](https://github.com/lmjaedentai/billy-telegram/issues/new/choose)\n\n**Main Command**\n• dont touch /shau\n• cn to en /dictionary\n• download /youtube\n• search song /lyrics\n\n**/more Subcommand**\n• google /translate\n• simple math /calc\n• malay /kamus\n• real time statistics /covid\n• search for /wiki\n• cari /peribahasa',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("go touch grass 🍃",url=f'https://en.wikipedia.org/wiki/Poaceae')]]), disable_web_page_preview=True)
-
-@app.on_message(filters.command("peribahasa"))
-@error_handling
-async def peribahasa(client, message):
-    query = await app.ask(message.chat.id, "🔎 Masukkan peribahasa yg anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="by maksudperibahasa.com"))
-    await app.send_message(message.chat.id,f"📕 **{query.text}** \n\nhttps://maksudperibahasa.com/?s={query.text.replace(' ','-')}/")
-    await app.send_message(message.chat.id,f"👲 **中文注释** \n\nhttps://www.ekamus.info/index.php/term/Simpulan+Bahasa+%26amp%3B+Peribahasa,{query.text.replace(' ','+')}.xhtml")
 
 
 
@@ -336,7 +351,7 @@ async def on_message(client, message):
     async def minicmd(argument):
         switcher = {
             '.id': lambda: message.reply(message.chat.id),
-            '.err': lambda: this_is_an_error(),
+            '.err': lambda: this_is_an_error(), 
             '.shutdown': lambda: shutdown(client,message),
         }
         try:
@@ -346,39 +361,47 @@ async def on_message(client, message):
     await minicmd(message.text)
 
 @app.on_inline_query()
-# @error_handling
-def sticker(client, inline_query):
-    # print(inline_query.query)
-    if inline_query.query == 'chenxiyun':
-        result = [InlineQueryResultArticle(title='晨曦云',thumb_url='https://i.imgur.com/ZqGgNt5.jpg', input_message_content=InputTextMessageContent(shau()))]
+@error_handling
+async def sticker(client, query):
+    string = query.query.lower()
+    defaultlist= [
+        InlineQueryResultArticle(title='晨曦云',description="dont touch",thumb_url='https://i.imgur.com/ZqGgNt5.jpg', input_message_content=InputTextMessageContent(shau())),
+        InlineQueryResultArticle(title='Help',description="List out available commands", input_message_content=InputTextMessageContent("/help"),thumb_url='https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/325/person-tipping-hand_light-skin-tone_1f481-1f3fb_1f3fb.png'),
+        InlineQueryResultArticle(title='About us',description="Coded in python🐍 2021 @lmjaedentai ", input_message_content=InputTextMessageContent("[about](https://telegra.ph/Billy-KaiCheng-09-04)"),thumb_url='https://i.imgur.com/OMuzyF7.png'),
+    ]
+    searchingmode = [
+        InlineQueryResultArticle(title='Search Dictionary',description="Show the definitions in English and Chinese",thumb_url='https://i.imgur.com/8yJ7rmm.png', input_message_content=InputTextMessageContent(f'/dict {string}')),
+        InlineQueryResultArticle(title='Find lyrics',description="Enter your song name",thumb_url='https://t3.ftcdn.net/jpg/04/54/66/12/360_F_454661277_NtQYM8oJq2wOzY1X9Y81FlFa06DVipVD.jpg', input_message_content=InputTextMessageContent(f'/lyrics {string}')),
+        InlineQueryResultArticle(title='Cari Kamus',description="Powered by Ekamus",thumb_url='https://www.ekamus.info/img/ekamus.png', input_message_content=InputTextMessageContent(f'/kamus {string}')),
+    ]
+    if string == "":
+        await query.answer(results=defaultlist,cache_time=1,switch_pm_text=f"Choose the option or Search",switch_pm_parameter="start",)
     else:
-        result = stickerlist
-    inline_query.answer(is_gallery=True,results=result,cache_time=1)
+        await query.answer(results=searchingmode ,cache_time=1,switch_pm_text=f"🔍Billy Instant Search",switch_pm_parameter="start",)
 
+
+
+    
 
 #QQ tracking
-import time
-def foo():
-  print("foo", time.time())
-  app.send_message(-1001518766606, f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')}", disable_web_page_preview=True,disable_notification=True)
-
 def every(delay, task):
+  global ii
+  ii = 1
   next_time = time.time() + delay
   while True:
     time.sleep(max(0, next_time - time.time()))
     try:
       task()
+      ii += 1
     except Exception:
       traceback.print_exc()
     next_time += (time.time() - next_time) // delay * delay + delay
 
-import threading
+def foo():
+    track.edit_text(f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **{ii}**")
+    
 threading.Thread(target=lambda: every(60, foo)).start()
-
-
-
 
 from online import keep_alive 
 keep_alive()
-stickerlist = getsticker()
 app.run()
