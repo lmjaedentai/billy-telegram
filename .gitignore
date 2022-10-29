@@ -3,3 +3,7 @@ __pycache__/
 *$py.class
 [Dd]esktop.ini
 *.session
+*.session-journal
+_config.yml
+.vscode
+test.py
