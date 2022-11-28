@@ -36,8 +36,8 @@ A [multipurpose telegram bot](https://t.me/billykaichengbot) by **Jaeden Tai :tr
 | `/memes`      | explore the fun in Billy's world               | `/m`         |
 | `/peribahasa` | powered by [MaksudPeribahasa](https://maksudperibahasa.com/)                     | `/p`         |
 | `/quad`       | find root of quadratic equation                | `/q`         |
-| `/remind`     | [*unstable*] still under developement         |            |
-| `/shau`       | dont ever try to use                           |            |
+| `/remind`     | [*unstable*] still under developement         |             |
+| `/shau`       | dont ever try to use                           | `@`            |
 | `/translate`  | powered by [Google Translate](https://translate.google.com)                    | `/t`         |
 | `/wiki`       | search article from [Wikipedia](https://en.wikipedia.org/)                  |            |
 | `/youtube`    | download mp3/mp4 from [Youtube](https://www.youtube.com/)                  |            |
