@@ -16,8 +16,15 @@
 </p>
 
 
+
+
 # Billy KaiCheng
-A multipurpose telegram bot by **Jaeden Tai :trollface:** in 2022 by using [Pyrogram](https://docs.pyrogram.org/).
+A [multipurpose telegram bot](https://t.me/billykaichengbot) by **Jaeden Tai :trollface:** in 2022 by using [Pyrogram](https://docs.pyrogram.org/).
+
+ <a href="https://t.me/billykaichengbot" target="_blank"><img src="https://user-images.githubusercontent.com/63090071/204215215-5474e1c9-6575-432e-8b33-010690dc2a67.png" width=220px></a>
+<br>
+
+
 
 ## Commands
 | Command     | Function                                       | Short form |
@@ -37,7 +44,8 @@ A multipurpose telegram bot by **Jaeden Tai :trollface:** in 2022 by using [Pyro
 | `/more`       | explore more function from billy               |            |
 | `/help`       | ask for support                                |            |
 
-
+## Feedback
+You can submit bug report or suggestion in [issue page](https://github.com/lmjaedentai/billy-telegram/issues/new/choose) of this repo
 
 ## Thanks to
 - [Pyrogram](https://t.me/pyrogramchat) Community Helper that help me so much.
