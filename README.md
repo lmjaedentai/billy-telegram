@@ -20,19 +20,23 @@
 A multipurpose telegram bot by **Jaeden Tai :trollface:** in 2022 by using [Pyrogram](https://docs.pyrogram.org/).
 
 ## Commands
-| Command       | Function                                                         |
-|---------------|------------------------------------------------------------------|
-| /calc         | solve simple math instantly                                      |
-| /covid        | check current covid statistic in Malaysia                        |
-| /shau         | designed for Jabatan Perdana Menteri Hal Ehwal Agama             |
-| /dict         | find word definition                                             |
-| /kamus        | cari definisi perkataan                                          |
-| /lyrics       | find lyrics for your favourite music                             |
-| /remind       | remind you something                                             |
-| /meet         | create google meet automatically|
-| /music        |  download youtube audio                                          |
-| /translate    | translate service by Google                                      |
-| /wiki         |  search article in wikipedia                                     |
+| Command     | Function                                       | Short form |
+|-------------|------------------------------------------------|------------|
+| `/covid`      | check [covid-19](https://covidnow.moh.gov.my/) real time statistics in Malaysia           |            |
+| `/dict`       | find [word definition](https://www.oxfordlearnersdictionaries.com/) in English and Chinese    | `/d`         |
+| `/kamus`      | cari maksud perkataan dari [kamus dewan](https://prpm.dbp.gov.my/cari1?keyword=kamus%20online)         | `/k`         |
+| `/lyrics`     | find the lyrics for your favourite music       | `/l`         |
+| `/memes`      | explore the fun in Billy's world               | `/m`         |
+| `/peribahasa` | powered by [MaksudPeribahasa](https://maksudperibahasa.com/)                     | `/p`         |
+| `/quad`       | find root of quadratic equation                | `/q`         |
+| `/remind`     | [*unstable*] still under developement         |            |
+| `/shau`       | dont ever try to use                           |            |
+| `/translate`  | powered by [Google Translate](https://translate.google.com)                    | `/t`         |
+| `/wiki`       | search article from [Wikipedia](https://en.wikipedia.org/)                  |            |
+| `/youtube`    | download mp3/mp4 from [Youtube](https://www.youtube.com/)                  |            |
+| `/more`       | explore more function from billy               |            |
+| `/help`       | ask for support                                |            |
+
 
 
 ## Thanks to
