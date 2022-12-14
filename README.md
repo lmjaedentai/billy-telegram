@@ -16,24 +16,36 @@
 </p>
 
 
+
+
 # Billy KaiCheng
-A multipurpose telegram bot by **Jaeden Tai :trollface:** in 2022 by using [Pyrogram](https://docs.pyrogram.org/).
+A [multipurpose telegram bot](https://t.me/billykaichengbot) by **Jaeden Tai :trollface:** in 2022 by using [Pyrogram](https://docs.pyrogram.org/).
+
+ <a href="https://t.me/billykaichengbot" target="_blank"><img src="https://user-images.githubusercontent.com/63090071/204215215-5474e1c9-6575-432e-8b33-010690dc2a67.png" width=220px></a>
+<br>
+
+
 
 ## Commands
-| Command       | Function                                                         |
-|---------------|------------------------------------------------------------------|
-| /calc         | solve simple math instantly                                      |
-| /covid        | check current covid statistic in Malaysia                        |
-| /shau         | designed for Jabatan Perdana Menteri Hal Ehwal Agama             |
-| /dict         | find word definition                                             |
-| /kamus        | cari definisi perkataan                                          |
-| /lyrics       | find lyrics for your favourite music                             |
-| /remind       | remind you something                                             |
-| /meet         | create google meet automatically|
-| /music        |  download youtube audio                                          |
-| /translate    | translate service by Google                                      |
-| /wiki         |  search article in wikipedia                                     |
+| Command | Function | Short form |
+|-------------|------------------------------------------------|------------|
+| `/covid`| check [covid-19](https://covidnow.moh.gov.my/) real time statistics in Malaysia | `/c` |
+| `/dict` | find [word definition](https://www.oxfordlearnersdictionaries.com/) in English and Chinese| `/d` |
+| `/kamus`| cari maksud perkataan dari [kamus dewan](https://prpm.dbp.gov.my/cari1?keyword=kamus%20online) | `/k` |
+| `/lyrics` | find the lyrics for your favourite music | `/l` |
+| `/memes`| explore the fun in Billy's world | `/m` |
+| `/peribahasa` | powered by [MaksudPeribahasa](https://maksudperibahasa.com/) | `/p` |
+| `/quad` | find root of quadratic equation| `/q` |
+| `/remind` | [*unstable*] still under developement 🏗️ 🚧 | |
+| `/shau` | dont ever try to use | `@`|
+| `/translate`| powered by [Google Translate](https://translate.google.com)| `/t` |
+| `/wiki` | search article from [Wikipedia](https://en.wikipedia.org/)|`/w`|
+| `/youtube`| download mp3/mp4 from [Youtube](https://www.youtube.com/)|`/y`|
+| `/more` | explore more function from billy ||
+| `/help` | ask for support||
 
+## Feedback
+You can submit bug report or suggestion in [issue page](https://github.com/lmjaedentai/billy-telegram/issues/new/choose) of this repo
 
 ## Thanks to
 - [Pyrogram](https://t.me/pyrogramchat) Community Helper that help me so much.
