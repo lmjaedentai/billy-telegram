@@ -3,50 +3,51 @@ import os
 import sys
 sys.path.append('./module') 
 import csv
+import ntlk
 import time
-import nltk
 import pytz
 import random
 import urllib
+import requests
 import asyncio
 import datetime
 import threading
 import traceback
 import mediawiki
-import lyricsgenius as lg
 from telegraph import Telegraph
 from mediawiki import MediaWiki
+from imgur_python import Imgur
 from word_forms.lemmatizer import lemmatize
 from PyMultiDictionary import MultiDictionary, DICT_WORDNET
 from pyromod import listen
 from pyrogram import Client,filters, errors
-from pyrogram.handlers import MessageHandler
-from pyrogram.types import Message, InlineKeyboardButton, KeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup,InlineQuery, InlineQueryResultArticle,InlineQueryResultPhoto, InputTextMessageContent, ForceReply, ReplyKeyboardRemove, ChatPermissions
-from module.pytube import YouTube, exceptions
+from pyrogram.types import Message, InlineKeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup,InlineQueryResultArticle, InputTextMessageContent, ForceReply, ReplyKeyboardRemove, ChatPermissions
 from module.google_trans_new import google_translator  
 from ytmusicapi import YTMusic
-
+from yt_dlp import YoutubeDL, utils
+import lyricsgenius as lg
 
 #LINK https://www.youtube.com/watch?v=qeBjVJkOAGc oracle
 
 #QQ before we start
-telegraph = Telegraph()
+# nltk.download('omw-1.4')#for repl
 ytmusic = YTMusic()
+telegraph = Telegraph()
 telegraph.create_account(short_name='billy')
 translator = google_translator(url_suffix="my") 
+imgur_client = Imgur({'client_id': 'cf8cccd3042fc58d1f4'})
+memelist = [[row['name']] for row in csv.DictReader(open('memes.csv', 'r', encoding='utf-8'), delimiter='|',fieldnames=['name','type','action'])]
+genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpYRjte", skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"], remove_section_headers=True)
 # app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
 app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
-# nltk.download('omw-1.4')#for repl
-
 with app:
     # app.send_message(-1001518766606, "#login\ndevice: vscode")
-    app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True)
+    app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
     print('==========login==========')
     track = app.send_message(-1001518766606, f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True)
 
-
 def error_handling(func):
-    async def inner(app,message: Message,**kwargs): #kwargs mean any other args avai
+    async def err_inner(app,message: Message,**kwargs): #kwargs mean any other args avai
         try:
             if func.__name__ != 'on_message':
                 # await app.send_message(-1001518766606,'👤 /'+func.__name__)
@@ -56,16 +57,37 @@ def error_handling(func):
             fullerror = "".join(traceback.TracebackException.from_exception(error).format())
             printerror = await app.send_message(-1001518766606,f'❌ **{error}**\n```\n{fullerror}\n```#error', disable_web_page_preview=True)
             if isinstance(error, errors.RPCError): #telegram own error
-                await app.send_message(message.chat.id,f"⁉️ **[Telegram API error]({printerror.link})**\n\nWe are sorry for that   /help", disable_web_page_preview=True)
+                await app.send_message(message.chat.id,f"⁉️ **[Telegram API error]({printerror.link})**\n\nWe are sorry for that   /help", disable_web_page_preview=True,reply_markup=ReplyKeyboardRemove())
             else:
                 await app.send_message(message.chat.id,f"❌ **[An unexpected error has occur]({printerror.link})** \n```\n{error}\n```\nWe are sorry for that   /help", disable_web_page_preview=True)
             traceback.print_exception(type(error), error, error.__traceback__, file = sys.stderr)
-    return inner
+    return err_inner
+
+def tracking():
+    def every(delay, task):
+        global ii
+        ii = 1
+        next_time = time.time() + delay
+        while True:
+            time.sleep(max(0, next_time - time.time()))
+            try:
+                task()
+                ii += 1
+            except Exception:
+                traceback.print_exc()
+            next_time += (time.time() - next_time) // delay * delay + delay
+            
+    def foo():
+        global track
+        track.delete()
+        track = app.send_message(-1001518766606,f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **{ii}**",disable_notification=True)
+    
+    threading.Thread(target=lambda: every(60, foo)).start()
 
 def shau():
     emoji = ['🖕', '🖕🏻', '🖕🏼','🖕🏽','🖕🏾','🖕🏿']
     content = emoji[random.randint(0,5)]
-    for a in range(59):
+    for i in range(59):
         content = content + emoji[random.randint(0,5)]
     return content
 
@@ -76,6 +98,7 @@ async def shutdown(app,message):
         sys.exit(f'shut down by **[{message.from_user.mention()}]**')
     else:
         await message.reply('❌ No admin rights')
+
 
 
 #QQ slash cmd
@@ -92,50 +115,41 @@ async def sendshau(client, message):
 @app.on_message(filters.command(["dict","d","dictionary"]))
 @error_handling
 async def dictionary(client, message):
-    targetlist = ['n.','adv.','adj.','v.','prep.','int.','conj.','art.','prop.','aux.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.','[','|| ','] ','/',')']
-    replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n\nInterjection: ','\n\nConjunction: ','\n\nArticles:','\n\nPronouns:','\n\nAuxiliary:','\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.','\n • ','\n\nExample:\n • ','\n • ','/ ',') ']
-    dictionary = MultiDictionary()
     def cndict(search):
-        text = ''
-        success = False
+        targetlist = ['n.','adv.','adj.','v.','prep.','int.','conj.','art.','prop.','aux.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.','[','|| ','] ','/',')']
+        replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n\nInterjection: ','\n\nConjunction: ','\n\nArticles:','\n\nPronouns:','\n\nAuxiliary:','\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.','\n • ','\n\nExample:\n • ','\n • ','/ ',') ']
+        meaning = ''
         with open('dict pro.csv', 'r', encoding='utf-8') as f:
-            for row in csv.reader(f, delimiter=","):
-                if search == row[0]:
-                    success = True
-                    for i in row:
-                        text += i  
-                    text = text.replace(search,'',1).replace(row[1],f'')
-                    break
-                elif f'{search} 1'== row[0]:
-                    success = True
-                    for i in row:
-                        text += i  
-                    text = text.replace(f'{search} 1','',1).replace(row[1],f'')
-                    search = f'{search} 2'
-        if success:
-            for i in range(len(targetlist)):
-                text = text.replace(targetlist[i],replacelist[i])
-            return text
-        else:
-            return False
+            for row in csv.DictReader(f, delimiter=',',fieldnames=['name','pronouciation','meaning']):
+                if search == row['name']:
+                    meaning += row['meaning']     #if the phrases got 2 meaning, += wont sacrify the first meaning
+                    break                         #everythings ends here, stop searching
+                elif f'{search} 1'== row['name']: #try to search "angle"
+                    meaning += row['meaning']
+                    search = f'{search} 2'        #let the loop to search for the 2nd meaning
+            if meaning != '':
+                for i in range(len(targetlist)):  #format definition
+                    meaning = meaning.replace(targetlist[i],replacelist[i])
+                return meaning
+            else:
+                return False
     
     #asking for query
-    if message.text.lower().strip() in ["/dict","/d","/dictionary"] or message.text.strip().__contains__('@BillyKaiChengBot'): #input == ONLY command
-        query = await app.ask(message.chat.id, "🔎 Enter a word to define",filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer"),)
+    if message.text.lower().strip() in ["/dict","/d","/dictionary"] or message.text.strip().__contains__('@BillyKaiChengBot'): #NOTE input == ONLY command
+        query = await app.ask(message.chat.id, "🔎 Enter a word to define",reply_to_message_id=message.id,filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer",selective=True),timeout=30)
         search = query.text.lower().strip()
     else: #args is given together with cmd
         search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
     typing = await app.send_message(message.chat.id,'searching...')
-
     #english dict
     try:
-        rawresult = dictionary.meaning('en',search, dictionary=DICT_WORDNET)
+        rawresult = MultiDictionary().meaning('en',search, dictionary=DICT_WORDNET)
     except IndexError: #no result
         pass
     else:
         i = 0
         result = ''
-        for types in ['Noun','Verb','Adjective','Adverb']:
+        for types in ['Noun','Verb','Adjective','Adverb']: #format definition
             if types in rawresult:
                 result+=f'\n{types}\n'
                 for meanings in rawresult[types]:
@@ -148,16 +162,16 @@ async def dictionary(client, message):
         try:
             search = lemmatize(search)
             zh = cndict(search) #try base form / lemma word
-        except ValueError: #word_form module: no word in this world
-            return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
+        except ValueError:      #word_form module: no word in this world
+            return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
         else:
-            if zh == False: #dict.pro do not hav
-                zh = f"\n{translator.translate(search,lang_tgt='zh')}"
+            if zh == False:     #dict.pro do not hav
+                zh = f"\n\n{translator.translate(search,lang_tgt='zh')}"
                 if zh.lower().strip() == search.strip() or zh=='':  #google trans do not hav
-                    return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
+                    return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
         finally:
             await typing.delete()
-    await app.send_message(message.chat.id,f'👲🏻**中文注释**\n{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
+    await app.send_message(message.chat.id,f'👲🏻**中文注释**{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
     await typing.delete()
 
 @app.on_message(filters.command(["kamus","k"]))
@@ -165,7 +179,7 @@ async def dictionary(client, message):
 async def kamus(client, message):
     #asking for query
     if message.text.lower().strip() in ["/kamus","/k"] or message.text.strip().__contains__('@BillyKaiChengBot'): #input == ONLY command
-        query = await app.ask(message.chat.id, "🔎 Masukkan perkataan yang anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="contoh: Almari"))
+        query = await app.ask(message.chat.id, "🔎 Masukkan perkataan yang anda ingin cari",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="contoh: Almari"))
         search = query.text.lower().strip()
     else: #args is given together with cmd
         search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
@@ -184,7 +198,7 @@ async def kamus(client, message):
 async def findlyrics(client, message):
     #asking for query
     if message.text.lower().strip() in ["/lyrics","/l"] or message.text.strip().__contains__('@BillyKaiChengBot'): #input == ONLY command
-        query = await app.ask(message.chat.id, "🎸 Tell me the **song title** __follow by the name of artist (optional)__",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="Perfect Ed Sheeran"))
+        query = await app.ask(message.chat.id, "🎸 Tell me the **song title** __follow by the name of artist (optional)__",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="Perfect Ed Sheeran"))
         search = query.text.lower().strip()
     else: #args is given together with cmd
         search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
@@ -205,42 +219,30 @@ async def findlyrics(client, message):
         await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/watch?v={searchresult[0]['videoId']}")],[InlineKeyboardButton("not this one ☹️",url=f"https://www.google.com/search?q={search.replace(' ','%20')}%20lyrics")]]))
     await typing.delete()
 
-@app.on_message(filters.command("youtube")) #https://www.youtube.com/watch?v=wiHYx9NX4DM
+@app.on_message(filters.command(["youtube","y"])) #https://www.youtube.com/watch?v=wiHYx9NX4DM
 @error_handling
-async def music(client, message):
-    def checkvalid(url):
-        try:
-            YouTube(url).title 
-        except exceptions.RegexMatchError:
-            return message.reply("❌ **Invalid query.** \nWe only support videos from Youtube.   /music")
+async def downloadyt(client, message):
+    async def askformat():
+        global choice
+        choice = await app.ask(message.chat.id,'Choose download format',reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['mp3','mp4']],resize_keyboard=True, one_time_keyboard=True)) 
+        if choice.text not in ['mp3','mp4']:
+            await askformat()
+
+    vidopt = {'format': 'best','outtmpl': 'vid.%(ext)s','restrictfilenames': True,'noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'} #LINK https://github.com/yt-dlp/yt-dlp#output-template
+    audioopt = {'format': 'bestaudio','outtmpl': 'audio.%(ext)s','restrictfilenames': True,'noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'}
+    query = await app.ask(message.chat.id, "📽  Enter Youtube url",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="paste link here"))
+    await askformat()
+    try:
+        if choice.text == 'mp4':
+            result = YoutubeDL(vidopt).extract_info(query.text, download=False)
         else:
-            return url
-    #download
-    query = await app.ask(message.chat.id, "🎺 Enter **link** from Youtube",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="paste link here"))
-    url = checkvalid(query.text)
-    status = await query.reply("⬇️  downloading media...")
-    music = YouTube(url).streams.filter(file_extension='mp4').order_by('resolution').desc().first().download()
-    # await status.delete()
-    #convert
-    status = await status.edit_text("➡️  sending media...")
-    # base, ext = os.path.splitext(music)
-    # new_file = base + '.mp3'
-    # os.rename(music, new_file)
-    #send
-    await query.reply_document(music,caption=YouTube(query.text).title,force_document=False)
-    await status.delete()
-    os.remove(music)
+            result = YoutubeDL(audioopt).extract_info(query.text, download=False)
+    except utils.DownloadError:
+        return await app.send_message(message.chat.id,'❌ Invalid url',reply_markup=ReplyKeyboardRemove())
+    await app.send_message(message.chat.id,f"**{result['fulltitle']}** \n\n⬇️  [Download link]({result['url']})  •  [more info](https://telegra.ph/Youtube-in-Billy-KaiCheng-12-09)",disable_web_page_preview=False,reply_markup=ReplyKeyboardRemove())
 
-
-
-@app.on_message(filters.command(["other","more"]))
-@error_handling
-async def others(client, message):
-    i = await message.reply('Select the feature you want',reply_markup=ReplyKeyboardMarkup([['/help'],['/peribahasa'],['/wiki'],['/translate'],['/covid']],resize_keyboard=True))
-    await asyncio.sleep(2)
-    await i.delete()
-
-@app.on_message(filters.command("covid"))
+#QQ Other cmd
+@app.on_message(filters.command(["covid","c"]))
 async def covid(client, message):
     def readcsv(url):
         with urllib.request.urlopen(url) as f:
@@ -254,11 +256,10 @@ async def covid(client, message):
     await message.reply(f'**🏥 <u>Active: {cases[4]}</u>** \n\n🔴 New cases: `{cases[1]}`\n🟢 Recovered: `{cases[3]}`\n⚫ Death: `{deaths[1]}`\n\nstay home to stay safe'
                     ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ more info",url="https://covidnow.moh.gov.my/")]]))
 
-@app.on_message(filters.command("wiki"))
+@app.on_message(filters.command(["wiki","wk"]))
 @error_handling
 async def wiki(client, message):
-    #asking for query
-    search = await app.ask(message.chat.id, "🔎 Enter name of article to search ",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="exp: Tiananmen square"))
+    search = await app.ask(message.chat.id, "🔎 Enter name of article to search ",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="exp: Tiananmen square"))
     try:
         result = MediaWiki().page(search.text)
     except mediawiki.DisambiguationError as suggestion:
@@ -268,28 +269,35 @@ async def wiki(client, message):
     else:
         await app.send_message(message.chat.id,f"📖 **{result.title}**\n\n{result.url.replace(' ','%20')}\n‎")
 
-@app.on_message(filters.command(["translate","t"]))
+@app.on_message(filters.command(["translate","t","trans"]))
 @error_handling
 async def translate(client, message):
-    query = await app.ask(message.chat.id, f"💬 Enter the word to **translate**",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="How are you?"))
+    langcode = [['🇬🇧 English'],['🇲🇾 Bahasa Melayu'],['🇹🇼 正体中文'],['instruction ℹ️'],['am'],['ar'],['eu'],['bn'],['bg'],['ca'],['cs'],['da'],['nl'],['et'],['fil'],['fi'],['fr'],['de'],['el'],['gu'],['iw'],['hi'],['hu'],['is'],['id'],['it'],['ja'],['kn'],['ko'],['lv'],['lt'],['no'],['pl'],['pt-PT'],['ro'],['ru'],['sr'],['sk'],['sl'],['es'],['sw'],['sv'],['ta'],['th'],['tr'],['uk'],['vi']]
+    query = await app.ask(message.chat.id, f"💬 Enter the word to **translate**",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="How are you?"))
     async def asklang():
         global code
-        choice = await app.ask(message.chat.id,'🌏 Select the language',filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['🇬🇧 English','🇲🇾 Bahasa Melayu','🇹🇼 正体中文']],resize_keyboard=True))
+        choice = await app.ask(message.chat.id,'🌏 Select the language',reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup(langcode,resize_keyboard=True, one_time_keyboard=True))
         if choice.text == '🇬🇧 English':
             return 'en'
         elif choice.text == '🇲🇾 Bahasa Melayu':
             return 'ms'
         elif choice.text == '🇹🇼 正体中文':
             return 'zh-tw'
+        elif choice.text == 'instruction ℹ️':
+            return None 
+        elif any(choice.text in x for x in langcode):
+            return choice.text
         else:
             await asklang()
     code = await asklang()
-    await app.send_message(message.chat.id,f'{query.text}\n⇓\n{translator.translate(query.text,lang_tgt=code)}\n\n',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Dictionary",switch_inline_query_current_chat=f'{query.text}')]]))
+    if code is None:
+        return await app.send_message(message.chat.id,f'click to see [instruction](https://telegra.ph/Language-code-in-translate-12-09)')
+    await choice.reply(f'{query.text}\n⇓\n{translator.translate(query.text,lang_tgt=code)}\n\n',reply_markup=ReplyKeyboardRemove())
 
 @app.on_message(filters.command(["peribahasa","p"]))
 @error_handling
 async def peribahasa(client, message):
-    query = await app.ask(message.chat.id, "🔎 Masukkan peribahasa yg anda ingin cari",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="by maksudperibahasa.com"))
+    query = await app.ask(message.chat.id, "🔎 Masukkan peribahasa yg anda ingin cari",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="by maksudperibahasa.com"))
     await app.send_message(message.chat.id,f"📕 **{query.text}** \n\nhttps://maksudperibahasa.com/?s={query.text.replace(' ','-')}/")
     await app.send_message(message.chat.id,f"👲 **中文注释** \n\nhttps://www.ekamus.info/index.php/?a=srch&q={query.text.replace(' ','+')}")
 
@@ -305,7 +313,7 @@ async def muteppl(client, message):
         return await app.send_message(message.chat.id,f"Are you trying to /mute yourself")
     time = message.text.replace(f'/{message.command[0]} ','').lower().strip()
 
-    # rawtime = await app.ask(message.chat.id, f"🕒 Pick a Duration",filters=filters.user(message.from_user.id),reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("How? 🤔",callback_data="data")]]))
+    # rawtime = await app.ask(message.chat.id, f"🕒 Pick a Duration",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("How? 🤔",callback_data="data")]]))
     # time = rawtime.text
     time_convert = {"s":1, "m":60, "h":3600,"d":86400}
     
@@ -319,25 +327,45 @@ async def muteppl(client, message):
     try:
         await app.restrict_chat_member(message.chat.id, message.reply_to_message.from_user.id, ChatPermissions(),datetime.datetime.now() + datetime.timedelta(seconds=seconds))
     except errors.ChatAdminRequired: #bot not admin
-        await app.send_message(message.chat.id,f'❌  The action requires admin privileges. Pls promote me.')
+        await app.send_message(message.chat.id,f'❌  Admin privileges required')
     except errors.UserAdminInvalid: #target is admin
         await app.send_message(message.chat.id,f'❌  No permission to mute admin')
     else:
         await app.send_message(message.chat.id,f'✅  **{message.reply_to_message.from_user.mention()}** is muted by {message.from_user.mention()} for **{time}**')
 
-@app.on_message(filters.command(["memes","m"]))
+@app.on_message(filters.command(["unmute"]))
 @error_handling
-async def sendmeme(client, message):
-    memelist = [['joe biden'],['very sad'],['caution'],['facts'],['pikachu'],['gay'],['abu'],['lagi gay'],['dont touch'],['rainbow'],['cats'],['nono color'],['no color pills'],['therapist'],['go jail'],['he go jail by himself'],['very very color'],['anti color']]
-    await app.send_message(message.chat.id,'Choose your favourite',reply_markup=ReplyKeyboardMarkup(memelist,resize_keyboard=True))
-   
-        
+async def unmuteppl(client, message):
+    try:
+        await app.restrict_chat_member(message.chat.id, message.reply_to_message.from_user.id, ChatPermissions(can_send_messages = True, can_send_media_messages = True, can_send_other_messages = True, can_send_polls = True, can_add_web_page_previews = True))
+    except errors.ChatAdminRequired: #bot not admin
+        await app.send_message(message.chat.id,f'❌  Admin privileges required')
+    except errors.UserAdminInvalid: #target is admin
+        await app.send_message(message.chat.id,f'❌  No permission to unmute admin')
+    else:
+        await app.send_message(message.chat.id,f'✅  **{message.reply_to_message.from_user.mention()}** is unmuted by {message.from_user.mention()} for **{time}**')
 
+@app.on_message(filters.command(["weather","temp","w"]))
+@error_handling
+async def sendweather(client, message):
+    choice = await app.ask(message.chat.id,'🌏 Choose your region',filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['Malacca'],['Other']],resize_keyboard=True, one_time_keyboard=True))
+    if choice.text == 'Malacca':
+        city = 'Malacca'
+    else:
+        query = await app.ask(message.chat.id,'🌏 Enter your region',reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="by MSN weather"))
+        city = query.text
+    response = requests.get(f"https://api.popcat.xyz/weather?q={city.replace(' ','%20')}")
+    raw = response.json()
+    emoji = ['⛈️', '⛈️','⛈️','⛈️','⛈️','☃️','☔❄️','☃️','❄️','❄️',  '☃️', '🌦️','🌧️','☃️','🌨️', '🌨️', '🌨️', '⛈️','🌦️','🌫️','🌁','🌫️😷','🌫️😷','🌬️','🌬️','❄️','☁️','☁️☁️','☁️☁️','🌥️', '🌥️','🌤️', '🌤️','🌞','🌞','⛈️','☀️☀️','50% ⛈️','50% ⛈️', '50% 🌧️','🌦️','50% 🌨️',  '🌨️','🌨️','❔','50% 🌧️','50% 🌨️','50% ⛈️']
+    await app.send_message(message.chat.id,f"**[{raw[0]['location']['name']}](https://www.google.com/search?q=melaka+weather)**\n{emoji[int(raw[0]['current']['skycode'])]} {raw[0]['current']['skytext']}\n\n🌡 temp: **{raw[0]['current']['temperature']}°C**\n🥵 highest: **{raw[0]['forecast'][0]['high']}°C**\n🥶 lowest: **{raw[0]['forecast'][0]['low']}°C**\n\n😑 feels like: **{raw[0]['current']['feelslike']}°C**\n💧 humidity: **{raw[0]['current']['humidity']}**\n🍃 wind: **{raw[0]['current']['winddisplay']}**\n🌧️ precipitation: **{raw[0]['forecast'][0]['precip']}%**\n\n**Tmr:** {emoji[int(raw[0]['current']['skycode'])]} {raw[0]['forecast'][1]['low']}-{raw[0]['forecast'][1]['high']}°C  •  🌧️{raw[0]['forecast'][1]['precip']}%",disable_web_page_preview=True)
+
+
+#QQ under construction
 @app.on_message(filters.command("remind"))
 @error_handling
 async def remind(client, message):
-    reminder = await app.ask(message.chat.id, f"🔔 What should I remind you?",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="this feature is unstable"))
-    rawtime = await app.ask(message.chat.id, f"🕒 Pick a time to remind",filters=filters.user(message.from_user.id),reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("How? 🤔",callback_data="data")]]))
+    reminder = await app.ask(message.chat.id, f"🔔 What should I remind you?",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="this feature is unstable"))
+    rawtime = await app.ask(message.chat.id, f"🕒 Pick a time to remind",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("How? 🤔",callback_data="data")]]))
     time = rawtime.text
     time_convert = {"s":1, "m":60, "h":3600,"d":86400}
     try:
@@ -357,66 +385,79 @@ async def remind(client, message):
 @app.on_callback_query()
 async def reminder_instructions(client, callback_query):
     await callback_query.answer(f"You can enter any time value you like\nby following format below.\n\nFor example:\n\n10 second  : 10s\n10 minutes : 10m\n10 hours     : 10h\n10 days       : 10d\n\nThis beta feature currently is unstable.",show_alert=True)
-        
-@app.on_message(filters.command(["start","help"]))
+
+@app.on_message(filters.command(["memes","m"]))
 @error_handling
-async def test(client, message):
-    await app.send_message(message.chat.id,'2022 coded in Python\n[source](https://github.com/lmjaedentai/billy-telegram#readme) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • [feedback](https://github.com/lmjaedentai/billy-telegram/issues/new/choose)\n\n**Main Command**\n• dont touch /shau\n• cn to en /dictionary\n• download /youtube\n• search song /lyrics\n\n**/more Subcommand**\n• google /translate\n• simple math /calc\n• malay /kamus\n• real time statistics /covid\n• search for /wiki\n• cari /peribahasa \n• find /memes'
+async def sendmeme(client, message):  
+    response = requests.get('https://api.popcat.xyz/meme')
+    raw = response.json()
+    await app.send_photo(message.chat.id,raw["image"],caption='Select a template',reply_markup=ReplyKeyboardMarkup(memelist,resize_keyboard=True, one_time_keyboard=True)) #send meme list
+    await asyncio.sleep(30)
+    remove = await message.reply("times up",reply_markup=ReplyKeyboardRemove())
+    await remove.delete()
+
+@app.on_message(filters.command(["other","more"]))
+@error_handling
+async def other_cmdlist(client, message):
+    i = await message.reply('Select the feature you want',reply_markup=ReplyKeyboardMarkup([['/help'],['/peribahasa'],['/wiki'],['/translate'],['/covid']],resize_keyboard=True, one_time_keyboard=True))
+    await asyncio.sleep(2)
+    await i.delete()
+    await asyncio.sleep(20)
+    remove = await message.reply("times up",reply_markup=ReplyKeyboardRemove())
+    await remove.delete()
+
+@app.on_message(filters.command(["start","help",'test']))
+@error_handling
+async def helpmenu(client, message):
+    await app.send_message(message.chat.id,'2022 coded in Python\n[source](https://lmjaedentai.github.io/billy-telegram/) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • /feedback\n\n**Main Command**\n• dont touch /shau\n• cn to en /dictionary\n• download /youtube\n• search song /lyrics\n\n**/more Subcommand**\n• google /translate\n• malay /kamus\n• real time statistics /covid\n• search for /wiki\n• cari /peribahasa \n• find /memes\n• check /weather'
     ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("go touch grass 🍃",switch_inline_query_current_chat='')]]), disable_web_page_preview=True)
 
-
-
-
+@app.on_message(filters.command(["feedback"]))
+@error_handling
+async def getfeedback(client, message):
+    respond = await app.ask(message.chat.id,'Comment here...\n\n**It can be a**\n1. idea suggestion\n2. letter to developer\n3. enhancement\n4. feature request\n5. bug report\n\n[more](https://github.com/lmjaedentai/billy-telegram/issues/new/choose)', disable_web_page_preview=True,filters=filters.user(message.from_user.id))
+    await app.send_message(message.chat.id,f'Thanks for your feeback 😁')
+    feedback = await app.send_message(-1001518766606,f'**User #feedback from {message.from_user.mention()}\n\n**{respond.text}')
+    await feedback.pin()
 
 
 #QQ other cmd
 @app.on_message(filters.text)
 @error_handling
 async def on_message(client, message):
-    async def runner(ask=0,url=None):
-        if ask == 2:
-            await app.send_message(message.chat.id,url)
-            return
-        if ask == 1:
-            query = await app.ask(message.chat.id, "Enter the text",filters=filters.user(message.from_user.id),reply_markup = ForceReply(placeholder="yeeeet"))
+    async def minicmd(ask=0,url=None):
+        if ask == 2: #url / text
+            return await app.send_message(message.chat.id,url)
+        elif ask == 1: #cuztomizable memes --> send photo
+            query = await app.ask(message.chat.id, "Enter the text",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="yeeeet"))
             text = query.text.replace(' ','+')
-            url = url.replace('qden',text)
-        await app.send_photo(message.chat.id,url)
-    
-    async def minicmd(argument):
-        switcher = {
-            '.id': lambda: message.reply(message.chat.id),
-            '.err': lambda: this_is_an_error(), 
-            '.shutdown': lambda: shutdown(client,message),
+            await app.send_photo(message.chat.id,url.replace('qden',text))
+        elif ask == 3: #func
+            return await app.send_message(message.chat.id,eval(url))
+        elif ask == 4:
+            target = await app.ask(message.chat.id,f'send me any message that u replying the person you want',filters=filters.user(message.from_user.id))
+            if not target.reply_to_message: #target user avatar
+                return await app.send_message(message.chat.id,f'❌  Invalid input /command')
+            status = await app.send_message(message.chat.id,f'loading...')
+            result = await app.download_media(target.reply_to_message.from_user.photo.big_file_id) #download user avatar
+            image = imgur_client.image_upload(result, 'Untitled', 'My first image upload')          #upload to imgur
+            imagelink = image['response']['data']['link']                                           #get imgur link
+            if message.text == 'sayang':
+                return await app.send_animation(message.chat.id,url.replace('qden',imagelink))  #process & send photo
+            await app.send_photo(message.chat.id,url.replace('qden',imagelink))                 #process & send photo
+            await status.delete()
+        else: #0 send photo
+            await app.send_photo(message.chat.id,url)
 
-            'joe biden': lambda: runner(1,'https://api.popcat.xyz/biden?text=qden'),
-            'pikachu': lambda: runner(1,'https://api.popcat.xyz/pikachu?text=qden'),
-            'very sad': lambda: runner(1,'https://api.popcat.xyz/sadcat?text=qden'),
-            'caution': lambda: runner(1,'https://api.popcat.xyz/caution?text=qden'),
-            'facts': lambda: runner(1,'https://api.popcat.xyz/biden?facts=qden'),
-            'abu': lambda: runner(2,'https://lmjaedentai.github.io/abu/'),
-            'gay': lambda: runner(2,'https://lmjaedentai.github.io/april/'),
-            'lagi gay': lambda: runner(2,'https://nextcord.gay'),
-            'dont touch': lambda: runner(2,shau()),
-            'cats': lambda: runner(2,f"http.cat/{random.choice([100,101,102,200,201,202,203,204,206,207,300,301,302,303,304,305,307,308,400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,416,417,418,420,421,422,423,424,425,426,429,431,444,450,451,497,498,499,500,501,502,503,504,506,507,508,509,510,511,521,522,523,525,599])}"),
-            'rainbow': lambda: runner(0,'https://i.imgur.com/DuB3YyZ.png'),
-            'nono color': lambda: runner(0,'https://www.aixiaola.com/wp-content/uploads/2021/10/c4d36f57bf4cc6e7d0c979398822a755.jpg'),
-            'no color pills': lambda: runner(0,'https://img.youxi369.com/article/contents/2021/09/30/small_2021093041011706.jpg'),
-            'therapist': lambda: runner(0,'https://truth.bahamut.com.tw/s01/202109/6658b57ae9aee50152692cbd71222066.JPG'),
-            'go jail': lambda: runner(0,'https://cdn.hk01.com/di/media/images/dw/20211025/529294578378346496210749.png/Ius3SpY28ZbfQ-GPJi_kJPLI8KbpH7JhlC8qeJQvKng?v=w1920'),
-            'he go jail by himself': lambda: runner(0,'https://i.imgur.com/ROnmLbi.png'),
-            'very very color': lambda: runner(0,'https://img.league-funny.com/imgur/163421235519_n.jpg'),
-            'anti color': lambda: runner(0,'https://pic1.zhimg.com/v2-93a878f9b7e6df2e7cf5f840ef30af38_b.jpg'),
-        }
-        try:
-            await switcher[argument]()
-        except KeyError:
-            pass
-    await minicmd(message.text)
+    if any(message.text in x for x in memelist): #user input are mini cmd
+        for row in csv.DictReader(open('memes.csv', 'r', encoding='utf-8'), delimiter='|',fieldnames=['name','type','action']):
+            if message.text == row['name']:
+                await minicmd(int(row['type']),row['action'])
+                break
 
 @app.on_inline_query()
 @error_handling
-async def sticker(client, query):
+async def inlinequerymenu(client, query):
     string = query.query.lower()
     defaultlist= [
         InlineQueryResultArticle(title='晨曦云',description="dont touch",thumb_url='https://i.imgur.com/ZqGgNt5.jpg', input_message_content=InputTextMessageContent(shau())),
@@ -435,30 +476,8 @@ async def sticker(client, query):
 
 
 
-    
-
-#QQ tracking
-def every(delay, task):
-  global ii
-  ii = 1
-  next_time = time.time() + delay
-  while True:
-    time.sleep(max(0, next_time - time.time()))
-    try:
-      task()
-      ii += 1
-    except Exception:
-      traceback.print_exc()
-    next_time += (time.time() - next_time) // delay * delay + delay
-
-def foo():
-    global track
-    track.delete()
-    track = app.send_message(-1001518766606,f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **{ii}**",disable_notification=True)
-    
-threading.Thread(target=lambda: every(60, foo)).start()
 
 from online import keep_alive 
-keep_alive()
+# tracking()
+# keep_alive()
 app.run()
-
