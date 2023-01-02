@@ -30,7 +30,7 @@ import lyricsgenius as lg
 #LINK https://www.youtube.com/watch?v=qeBjVJkOAGc oracle
 
 #QQ before we start
-nltk.download('omw-1.4')#for repl
+# nltk.download('omw-1.4')#for repl
 ytmusic = YTMusic()
 telegraph = Telegraph()
 telegraph.create_account(short_name='billy')
@@ -38,8 +38,8 @@ translator = google_translator(url_suffix="my")
 imgur_client = Imgur({'client_id': 'cf8cccd3042fc58d1f4'})
 memelist = [[row['name']] for row in csv.DictReader(open('memes.csv', 'r', encoding='utf-8'), delimiter='|',fieldnames=['name','type','action'])]
 genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpYRjte", skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"], remove_section_headers=True)
-app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
-# app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
+# app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
+app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
 with app:
     # app.send_message(-1001518766606, "#login\ndevice: vscode")
     app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
@@ -101,11 +101,11 @@ async def shutdown(app,message):
 
 async def check_definition(search,message):
     def cndict(search):
-        targetlist = ['n.','adv.','adj.','v.','prep.','int.','conj.','art.','prop.','aux.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.','[','|| ','] ','/',')']
-        replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n\nInterjection: ','\n\nConjunction: ','\n\nArticles:','\n\nPronouns:','\n\nAuxiliary:','\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.','\n • ','\n\nExample:\n • ','\n • ','/ ',') ']
+        targetlist = ['n.','adv.','adj.','v.','prep.','int.','conj.','art.','prop.','aux.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.','[','|| ','] ','/',')','①','③']
+        replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n\nInterjection: ','\n\nConjunction: ','\n\nArticles:','\n\nPronouns:','\n\nAuxiliary:','\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.','\n • ','\n\nExample:\n • ','\n • ','/ ',') ','\n① ','\n③ ']
         meaning = ''
         with open('dict pro.csv', 'r', encoding='utf-8') as f:
-            for row in csv.DictReader(f, delimiter=',',fieldnames=['name','pronouciation','meaning']):
+            for row in csv.DictReader(f, delimiter='*',fieldnames=['name','pronouciation','meaning']):
                 if search == row['name']:
                     meaning += row['meaning']     #if the phrases got 2 meaning, += wont sacrify the first meaning
                     break                         #everythings ends here, stop searching
@@ -126,7 +126,6 @@ async def check_definition(search,message):
             pass
         except KeyError:
             await endict(search)
-            await app.send_message(-1001518766606, f"[#keyerror 0 handling]")
         else:
             i = 0
             result = ''
@@ -157,7 +156,7 @@ async def check_definition(search,message):
     await app.send_message(message.chat.id,f'👲🏻**中文注释**{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
     await typing.delete()
 
-@app.on_message(filters.text & filters.chat(-1001733031563))
+@app.on_message(filters.chat(-1001733031563))
 @error_handling
 async def on_message(client, message):
     search = message.text
@@ -278,8 +277,8 @@ async def wiki(client, message):
     try:
         result = MediaWiki().page(search.text)
     except mediawiki.DisambiguationError as suggestion:
-        await search.reply(f'**🤔 Please specify your search query** \n{suggestion} \n\n**Your search query matched mutliple pages.**\n\n/wiki')
         await app.send_photo(message.chat.id,"https://http.cat/300")
+        await search.reply(f'**🤔 Please specify your search query** \n{suggestion} \n\n**Your search query matched mutliple pages.**\n\n/wiki')
     except mediawiki.PageError:
         await search.reply(f'https://http.cat/404   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.text.replace(' ','%20')}")]]))
     else:
@@ -370,10 +369,14 @@ async def sendweather(client, message):
     else:
         query = await app.ask(message.chat.id,'🌏 Enter your region',reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="by MSN weather"))
         city = query.text
-    response = requests.get(f"https://api.popcat.xyz/weather?q={city.replace(' ','%20')}")
-    raw = response.json()
-    emoji = ['⛈️', '⛈️','⛈️','⛈️','⛈️','☃️','☔❄️','☃️','❄️','❄️',  '☃️', '🌦️','🌧️','☃️','🌨️', '🌨️', '🌨️', '⛈️','🌦️','🌫️','🌁','🌫️😷','🌫️😷','🌬️','🌬️','❄️','☁️','☁️☁️','☁️☁️','🌥️', '🌥️','🌤️', '🌤️','🌞','🌞','⛈️','☀️☀️','50% ⛈️','50% ⛈️', '50% 🌧️','🌦️','50% 🌨️',  '🌨️','🌨️','❔','50% 🌧️','50% 🌨️','50% ⛈️']
-    await app.send_message(message.chat.id,f"**[{raw[0]['location']['name']}](https://www.google.com/search?q={city.replace(' ','%20')}%20weather)**\n{emoji[int(raw[0]['current']['skycode'])]} {raw[0]['current']['skytext']}\n\n🌡 temp: **{raw[0]['current']['temperature']}°C**\n🥵 highest: **{raw[0]['forecast'][0]['high']}°C**\n🥶 lowest: **{raw[0]['forecast'][0]['low']}°C**\n\n😑 feels like: **{raw[0]['current']['feelslike']}°C**\n💧 humidity: **{raw[0]['current']['humidity']}**\n🍃 wind: **{raw[0]['current']['winddisplay']}**\n🌧️ precipitation: **{raw[0]['forecast'][0]['precip']}%**\n\n**Tmr:** {emoji[int(raw[0]['current']['skycode'])]} {raw[0]['forecast'][1]['low']}-{raw[0]['forecast'][1]['high']}°C  •  🌧️{raw[0]['forecast'][1]['precip']}%",disable_web_page_preview=True,reply_markup=ReplyKeyboardRemove())
+    try:
+        response = requests.get(f"https://api.popcat.xyz/weather?q={city.replace(' ','%20')}")
+    except IndexError:
+        return await message.reply(f'https://http.cat/404   /help',reply_markup=ReplyKeyboardRemove())
+    else:
+        raw = response.json()
+        emoji = ['⛈️', '⛈️','⛈️','⛈️','⛈️','☃️','☔❄️','☃️','❄️','❄️',  '☃️', '🌦️','🌧️','☃️','🌨️', '🌨️', '🌨️', '⛈️','🌦️','🌫️','🌁','🌫️😷','🌫️😷','🌬️','🌬️','❄️','☁️','☁️☁️','☁️☁️','🌥️', '🌥️','🌤️', '🌤️','🌞','🌞','⛈️','☀️☀️','50% ⛈️','50% ⛈️', '50% 🌧️','🌦️','50% 🌨️',  '🌨️','🌨️','❔','50% 🌧️','50% 🌨️','50% ⛈️']
+        await app.send_message(message.chat.id,f"**[{raw[0]['location']['name']}](https://www.google.com/search?q={city.replace(' ','%20')}%20weather)**\n{emoji[int(raw[0]['current']['skycode'])]} {raw[0]['current']['skytext']}\n\n🌡 temp: **{raw[0]['current']['temperature']}°C**\n🥵 highest: **{raw[0]['forecast'][0]['high']}°C**\n🥶 lowest: **{raw[0]['forecast'][0]['low']}°C**\n\n😑 feels like: **{raw[0]['current']['feelslike']}°C**\n💧 humidity: **{raw[0]['current']['humidity']}**\n🍃 wind: **{raw[0]['current']['winddisplay']}**\n🌧️ precipitation: **{raw[0]['forecast'][0]['precip']}%**\n\n**Tmr:** {emoji[int(raw[0]['current']['skycode'])]} {raw[0]['forecast'][1]['low']}-{raw[0]['forecast'][1]['high']}°C  •  🌧️{raw[0]['forecast'][1]['precip']}%",disable_web_page_preview=True,reply_markup=ReplyKeyboardRemove())
 
 
 #QQ under construction
@@ -425,9 +428,9 @@ async def other_cmdlist(client, message):
 @app.on_message(filters.command(["start","help",'test']))
 @error_handling
 async def helpmenu(client, message):
+    await app.send_photo(message.chat.id,'https://http.cat/100')
     await app.send_message(message.chat.id,'2022 coded in Python\n[source](https://lmjaedentai.github.io/billy-telegram/) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • /feedback\n\n**Main Command**\n• dont touch /shau\n• cn to en /dictionary\n• download /youtube\n• search song /lyrics\n\n**/more Subcommand**\n• google /translate\n• malay /kamus\n• real time statistics /covid\n• search for /wiki\n• cari /peribahasa \n• find /memes\n• check /weather'
     ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("go touch grass 🍃",switch_inline_query_current_chat='')]]), disable_web_page_preview=True)
-    await app.send_photo(message.chat.id,'https://http.cat/100')
 
 @app.on_message(filters.command(["feedback"]))
 @error_handling
@@ -502,6 +505,6 @@ async def inlinequerymenu(client, query):
 
 
 from online import keep_alive 
-tracking()
-keep_alive()
+# tracking()
+# keep_alive()
 app.run()
