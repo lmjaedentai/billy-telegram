@@ -3,7 +3,7 @@ import os
 import sys
 sys.path.append('./module') 
 import csv
-import ntlk
+import nltk
 import time
 import pytz
 import random
@@ -30,7 +30,7 @@ import lyricsgenius as lg
 #LINK https://www.youtube.com/watch?v=qeBjVJkOAGc oracle
 
 #QQ before we start
-# nltk.download('omw-1.4')#for repl
+nltk.download('omw-1.4')#for repl
 ytmusic = YTMusic()
 telegraph = Telegraph()
 telegraph.create_account(short_name='billy')
@@ -38,8 +38,8 @@ translator = google_translator(url_suffix="my")
 imgur_client = Imgur({'client_id': 'cf8cccd3042fc58d1f4'})
 memelist = [[row['name']] for row in csv.DictReader(open('memes.csv', 'r', encoding='utf-8'), delimiter='|',fieldnames=['name','type','action'])]
 genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpYRjte", skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"], remove_section_headers=True)
-# app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
-app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
+app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
+# app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
 with app:
     # app.send_message(-1001518766606, "#login\ndevice: vscode")
     app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
@@ -97,24 +97,9 @@ async def shutdown(app,message):
         await app.send_message(-1001518766606,f'😴  shut down by **{message.from_user.mention()}**')
         sys.exit(f'shut down by **[{message.from_user.mention()}]**')
     else:
-        await message.reply('❌ No admin rights')
+        await message.reply('https://http.cat/450')
 
-
-
-#QQ slash cmd
-@app.on_message(filters.command("shau"))
-@error_handling
-async def sendshau(client, message):
-    instructiion = await message.reply("GO",reply_markup=ReplyKeyboardMarkup([[shau(),shau()],[shau(),shau()]]))
-    await asyncio.sleep(2)
-    await instructiion.delete()
-    await asyncio.sleep(20)
-    remove = await message.reply("times up",reply_markup=ReplyKeyboardRemove())
-    await remove.delete()
-
-@app.on_message(filters.command(["dict","d","dictionary"]))
-@error_handling
-async def dictionary(client, message):
+async def check_definition(search,message):
     def cndict(search):
         targetlist = ['n.','adv.','adj.','v.','prep.','int.','conj.','art.','prop.','aux.','1.','2.','3.','4.','5.','6.','7.','8.','9.','10.','[','|| ','] ','/',')']
         replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n\nInterjection: ','\n\nConjunction: ','\n\nArticles:','\n\nPronouns:','\n\nAuxiliary:','\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.','\n • ','\n\nExample:\n • ','\n • ','/ ',') ']
@@ -134,45 +119,75 @@ async def dictionary(client, message):
             else:
                 return False
     
-    #asking for query
-    if message.text.lower().strip() in ["/dict","/d","/dictionary"] or message.text.strip().__contains__('@BillyKaiChengBot'): #NOTE input == ONLY command
-        query = await app.ask(message.chat.id, "🔎 Enter a word to define",reply_to_message_id=message.id,filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer",selective=True),timeout=30)
-        search = query.text.lower().strip()
-    else: #args is given together with cmd
-        search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
+    async def endict(search):
+        try:
+            rawresult = MultiDictionary().meaning('en',search, dictionary=DICT_WORDNET)
+        except IndexError: #no result
+            pass
+        except KeyError:
+            await endict(search)
+            await app.send_message(-1001518766606, f"[#keyerror 0 handling]")
+        else:
+            i = 0
+            result = ''
+            for types in ['Noun','Verb','Adjective','Adverb']: #format definition
+                if types in rawresult:
+                    result+=f'\n{types}\n'
+                    for meanings in rawresult[types]:
+                        i+=1
+                        result += f'{i}. {meanings}\n'
+            await app.send_message(message.chat.id,f'📘 **[{search}](https://www.oxfordlearnersdictionaries.com/definition/english/{search.replace(" ","%20")})** \n{result}‎ ')
+
     typing = await app.send_message(message.chat.id,'searching...')
-    #english dict
-    try:
-        rawresult = MultiDictionary().meaning('en',search, dictionary=DICT_WORDNET)
-    except IndexError: #no result
-        pass
-    else:
-        i = 0
-        result = ''
-        for types in ['Noun','Verb','Adjective','Adverb']: #format definition
-            if types in rawresult:
-                result+=f'\n{types}\n'
-                for meanings in rawresult[types]:
-                    i+=1
-                    result += f'{i}. {meanings}\n'
-        await app.send_message(message.chat.id,f'📘 **[{search}](https://www.oxfordlearnersdictionaries.com/definition/english/{search.replace(" ","%20")})** \n{result}‎ ')
-    #cn dict
+    await endict(search)
     zh = cndict(search)
     if zh == False or zh == '': #no result
         try:
             search = lemmatize(search)
             zh = cndict(search) #try base form / lemma word
         except ValueError:      #word_form module: no word in this world
-            return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
+            return await message.reply(f'https://http.cat/404   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
         else:
             if zh == False:     #dict.pro do not hav
                 zh = f"\n\n{translator.translate(search,lang_tgt='zh')}"
                 if zh.lower().strip() == search.strip() or zh=='':  #google trans do not hav
-                    return await message.reply(f'❌ **No search result**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
+                    return await message.reply(f'https://http.cat/404   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
         finally:
             await typing.delete()
     await app.send_message(message.chat.id,f'👲🏻**中文注释**{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
     await typing.delete()
+
+@app.on_message(filters.text & filters.chat(-1001733031563))
+@error_handling
+async def on_message(client, message):
+    search = message.text
+    if "/" in search or " " in search or search.isalpha() == False:
+        return await message.delete()
+    else:
+        search = search.lower().strip()
+        await check_definition(search,message)
+    
+#QQ slash cmd
+@app.on_message(filters.command("shau"))
+@error_handling
+async def sendshau(client, message):
+    instructiion = await message.reply("GO",reply_markup=ReplyKeyboardMarkup([[shau(),shau()],[shau(),shau()]]))
+    await asyncio.sleep(2)
+    await instructiion.delete()
+    await asyncio.sleep(20)
+    remove = await message.reply("times up",reply_markup=ReplyKeyboardRemove())
+    await remove.delete()
+
+@app.on_message(filters.command(["dict","d","dictionary","q"]))
+@error_handling
+async def dictionary(client, message):
+    #asking for query
+    if message.text.lower().strip() in ["/dict","/d","/dictionary","/q"] or message.text.strip().__contains__('@BillyKaiChengBot'): #NOTE input == ONLY command
+        query = await app.ask(message.chat.id, "🔎 Enter a word to define",reply_to_message_id=message.id,filters=filters.user(message.from_user.id) ,reply_markup = ForceReply(placeholder="exp: Daydreamer",selective=True),timeout=30)
+        search = query.text.lower().strip()
+    else: #args is given together with cmd
+        search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
+    await check_definition(search,message)
 
 @app.on_message(filters.command(["kamus","k"]))
 @error_handling
@@ -187,7 +202,7 @@ async def kamus(client, message):
 
     zh = translator.translate(search,lang_tgt='zh') 
     if zh.lower().strip() == search or zh=='': 
-        await app.send_message(message.chat.id,f'❌ **Carian kata tiada di dalam kamus terkini**   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
+        await app.send_message(message.chat.id,f'https://http.cat/404   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
     else: 
         # await app.send_message(message.chat.id,f'📕 **{search}** \n\n👲 {zh}\n\n**➡️ [lihat selanjutnya](https://www.ekamus.info/index.php/term/%E9%A9%AC%E6%9D%A5%E6%96%87-%E5%8D%8E%E6%96%87%E5%AD%97%E5%85%B8,{search.replace(" ","%20").lower()}.xhtml)**')#, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text.replace(" ","%20")}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text.replace(" ","%20")}')]]))
         await app.send_message(message.chat.id,f'📕 **{search}** \n\n👲 {zh}\n\n**➡️ [lihat selanjutnya](https://www.ekamus.info/index.php/?a=srch&d=1&q={search.replace(" ","%20").lower()})**')
@@ -238,7 +253,7 @@ async def downloadyt(client, message):
         else:
             result = YoutubeDL(audioopt).extract_info(query.text, download=False)
     except utils.DownloadError:
-        return await app.send_message(message.chat.id,'❌ Invalid url',reply_markup=ReplyKeyboardRemove())
+        return await app.send_message(message.chat.id,' https://http.cat/415',reply_markup=ReplyKeyboardRemove())
     await app.send_message(message.chat.id,f"**{result['fulltitle']}** \n\n⬇️  [Download link]({result['url']})  •  [more info](https://telegra.ph/Youtube-in-Billy-KaiCheng-12-09)",disable_web_page_preview=False,reply_markup=ReplyKeyboardRemove())
 
 #QQ Other cmd
@@ -264,8 +279,9 @@ async def wiki(client, message):
         result = MediaWiki().page(search.text)
     except mediawiki.DisambiguationError as suggestion:
         await search.reply(f'**🤔 Please specify your search query** \n{suggestion} \n\n**Your search query matched mutliple pages.**\n\n/wiki')
+        await app.send_photo(message.chat.id,"https://http.cat/300")
     except mediawiki.PageError:
-        await search.reply(f'❌ **No search result** Try Google.',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.text.replace(' ','%20')}")]]))
+        await search.reply(f'https://http.cat/404   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Google",url=f"https://www.google.com/search?q={search.text.replace(' ','%20')}")]]))
     else:
         await app.send_message(message.chat.id,f"📖 **{result.title}**\n\n{result.url.replace(' ','%20')}\n‎")
 
@@ -275,7 +291,7 @@ async def translate(client, message):
     langcode = [['🇬🇧 English'],['🇲🇾 Bahasa Melayu'],['🇹🇼 正体中文'],['instruction ℹ️'],['am'],['ar'],['eu'],['bn'],['bg'],['ca'],['cs'],['da'],['nl'],['et'],['fil'],['fi'],['fr'],['de'],['el'],['gu'],['iw'],['hi'],['hu'],['is'],['id'],['it'],['ja'],['kn'],['ko'],['lv'],['lt'],['no'],['pl'],['pt-PT'],['ro'],['ru'],['sr'],['sk'],['sl'],['es'],['sw'],['sv'],['ta'],['th'],['tr'],['uk'],['vi']]
     query = await app.ask(message.chat.id, f"💬 Enter the word to **translate**",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="How are you?"))
     async def asklang():
-        global code
+        global code, choice
         choice = await app.ask(message.chat.id,'🌏 Select the language',reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup(langcode,resize_keyboard=True, one_time_keyboard=True))
         if choice.text == '🇬🇧 English':
             return 'en'
@@ -291,7 +307,7 @@ async def translate(client, message):
             await asklang()
     code = await asklang()
     if code is None:
-        return await app.send_message(message.chat.id,f'click to see [instruction](https://telegra.ph/Language-code-in-translate-12-09)')
+        return await app.send_message(message.chat.id,f'click to see [instruction](https://telegra.ph/Language-code-in-translate-12-09)',reply_markup=ReplyKeyboardRemove())
     await choice.reply(f'{query.text}\n⇓\n{translator.translate(query.text,lang_tgt=code)}\n\n',reply_markup=ReplyKeyboardRemove())
 
 @app.on_message(filters.command(["peribahasa","p"]))
@@ -306,7 +322,7 @@ async def peribahasa(client, message):
 async def muteppl(client, message):
     me = await app.get_me()
     if not message.reply_to_message:
-        return await app.send_message(message.chat.id,f'❌  Invalid input /command')
+        return await app.send_message(message.chat.id,f'https://http.cat/412')
     if message.reply_to_message.from_user.id == me.id:
         return await app.send_message(message.chat.id,f"[Billy cant mute itself](https://upload.wikimedia.org/wikipedia/en/thumb/9/9a/Trollface_non-free.png/220px-Trollface_non-free.png)")
     if message.reply_to_message.from_user.id == message.from_user.id:
@@ -320,16 +336,16 @@ async def muteppl(client, message):
     try:
         seconds = int(time[:-1]) * time_convert[time[-1]]
     except (ValueError, KeyError,TypeError):
-        return await app.send_message(message.chat.id,f"❌ Invalid value")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
+        return await app.send_message(message.chat.id,f"https://http.cat/418")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
     if seconds <= 30 or seconds >= 31622400:
-        return await app.send_message(message.chat.id,f"❌ Invalid input value")
+        return await app.send_message(message.chat.id,f"https://http.cat/416")
     
     try:
         await app.restrict_chat_member(message.chat.id, message.reply_to_message.from_user.id, ChatPermissions(),datetime.datetime.now() + datetime.timedelta(seconds=seconds))
     except errors.ChatAdminRequired: #bot not admin
-        await app.send_message(message.chat.id,f'❌  Admin privileges required')
+        await app.send_message(message.chat.id,f'https://http.cat/401')
     except errors.UserAdminInvalid: #target is admin
-        await app.send_message(message.chat.id,f'❌  No permission to mute admin')
+        await app.send_message(message.chat.id,f'https://http.cat/405')
     else:
         await app.send_message(message.chat.id,f'✅  **{message.reply_to_message.from_user.mention()}** is muted by {message.from_user.mention()} for **{time}**')
 
@@ -339,9 +355,9 @@ async def unmuteppl(client, message):
     try:
         await app.restrict_chat_member(message.chat.id, message.reply_to_message.from_user.id, ChatPermissions(can_send_messages = True, can_send_media_messages = True, can_send_other_messages = True, can_send_polls = True, can_add_web_page_previews = True))
     except errors.ChatAdminRequired: #bot not admin
-        await app.send_message(message.chat.id,f'❌  Admin privileges required')
+        await app.send_message(message.chat.id,f'https://http.cat/401')
     except errors.UserAdminInvalid: #target is admin
-        await app.send_message(message.chat.id,f'❌  No permission to unmute admin')
+        await app.send_message(message.chat.id,f'https://http.cat/405')
     else:
         await app.send_message(message.chat.id,f'✅  **{message.reply_to_message.from_user.mention()}** is unmuted by {message.from_user.mention()} for **{time}**')
 
@@ -357,7 +373,7 @@ async def sendweather(client, message):
     response = requests.get(f"https://api.popcat.xyz/weather?q={city.replace(' ','%20')}")
     raw = response.json()
     emoji = ['⛈️', '⛈️','⛈️','⛈️','⛈️','☃️','☔❄️','☃️','❄️','❄️',  '☃️', '🌦️','🌧️','☃️','🌨️', '🌨️', '🌨️', '⛈️','🌦️','🌫️','🌁','🌫️😷','🌫️😷','🌬️','🌬️','❄️','☁️','☁️☁️','☁️☁️','🌥️', '🌥️','🌤️', '🌤️','🌞','🌞','⛈️','☀️☀️','50% ⛈️','50% ⛈️', '50% 🌧️','🌦️','50% 🌨️',  '🌨️','🌨️','❔','50% 🌧️','50% 🌨️','50% ⛈️']
-    await app.send_message(message.chat.id,f"**[{raw[0]['location']['name']}](https://www.google.com/search?q=melaka+weather)**\n{emoji[int(raw[0]['current']['skycode'])]} {raw[0]['current']['skytext']}\n\n🌡 temp: **{raw[0]['current']['temperature']}°C**\n🥵 highest: **{raw[0]['forecast'][0]['high']}°C**\n🥶 lowest: **{raw[0]['forecast'][0]['low']}°C**\n\n😑 feels like: **{raw[0]['current']['feelslike']}°C**\n💧 humidity: **{raw[0]['current']['humidity']}**\n🍃 wind: **{raw[0]['current']['winddisplay']}**\n🌧️ precipitation: **{raw[0]['forecast'][0]['precip']}%**\n\n**Tmr:** {emoji[int(raw[0]['current']['skycode'])]} {raw[0]['forecast'][1]['low']}-{raw[0]['forecast'][1]['high']}°C  •  🌧️{raw[0]['forecast'][1]['precip']}%",disable_web_page_preview=True)
+    await app.send_message(message.chat.id,f"**[{raw[0]['location']['name']}](https://www.google.com/search?q={city.replace(' ','%20')}%20weather)**\n{emoji[int(raw[0]['current']['skycode'])]} {raw[0]['current']['skytext']}\n\n🌡 temp: **{raw[0]['current']['temperature']}°C**\n🥵 highest: **{raw[0]['forecast'][0]['high']}°C**\n🥶 lowest: **{raw[0]['forecast'][0]['low']}°C**\n\n😑 feels like: **{raw[0]['current']['feelslike']}°C**\n💧 humidity: **{raw[0]['current']['humidity']}**\n🍃 wind: **{raw[0]['current']['winddisplay']}**\n🌧️ precipitation: **{raw[0]['forecast'][0]['precip']}%**\n\n**Tmr:** {emoji[int(raw[0]['current']['skycode'])]} {raw[0]['forecast'][1]['low']}-{raw[0]['forecast'][1]['high']}°C  •  🌧️{raw[0]['forecast'][1]['precip']}%",disable_web_page_preview=True,reply_markup=ReplyKeyboardRemove())
 
 
 #QQ under construction
@@ -371,12 +387,12 @@ async def remind(client, message):
     try:
         seconds = int(time[:-1]) * time_convert[time[-1]]
     except (ValueError, KeyError,TypeError):
-        return await app.send_message(message.chat.id,f"**❌ Invalid input**\nClick this to see instructions 👇🏻 then try again /remind",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
+        return await app.send_message(message.chat.id,f"https://http.cat/304",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
     rawdate = pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()) + datetime.timedelta(seconds = seconds) # UTC8 + delaytime
     if seconds <= 0:
-        await app.send_message(message.chat.id,f'❌ No zero or negative value')
+        await app.send_message(message.chat.id,f'https://http.cat/411')
     elif seconds > 7776000:
-        await app.send_message(message.chat.id,f'❌ Maximum duration is 90 days.')
+        await app.send_message(message.chat.id,f'https://http.cat/414')
     else: 
         await app.send_message(message.chat.id,f"🔔 Alright, I will remind you **{reminder.text}** in **{time}** at **{datetime.datetime.fromtimestamp(round(rawdate.timestamp()))}**")
         await asyncio.sleep(seconds)
@@ -411,6 +427,7 @@ async def other_cmdlist(client, message):
 async def helpmenu(client, message):
     await app.send_message(message.chat.id,'2022 coded in Python\n[source](https://lmjaedentai.github.io/billy-telegram/) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • /feedback\n\n**Main Command**\n• dont touch /shau\n• cn to en /dictionary\n• download /youtube\n• search song /lyrics\n\n**/more Subcommand**\n• google /translate\n• malay /kamus\n• real time statistics /covid\n• search for /wiki\n• cari /peribahasa \n• find /memes\n• check /weather'
     ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("go touch grass 🍃",switch_inline_query_current_chat='')]]), disable_web_page_preview=True)
+    await app.send_photo(message.chat.id,'https://http.cat/100')
 
 @app.on_message(filters.command(["feedback"]))
 @error_handling
@@ -420,24 +437,24 @@ async def getfeedback(client, message):
     feedback = await app.send_message(-1001518766606,f'**User #feedback from {message.from_user.mention()}\n\n**{respond.text}')
     await feedback.pin()
 
-
 #QQ other cmd
+
 @app.on_message(filters.text)
 @error_handling
 async def on_message(client, message):
-    async def minicmd(ask=0,url=None):
+    async def memecmd(ask=0,url=None):
         if ask == 2: #url / text
             return await app.send_message(message.chat.id,url)
         elif ask == 1: #cuztomizable memes --> send photo
             query = await app.ask(message.chat.id, "Enter the text",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="yeeeet"))
-            text = query.text.replace(' ','+')
+            text = query.text.replace(' ','%20')
             await app.send_photo(message.chat.id,url.replace('qden',text))
         elif ask == 3: #func
             return await app.send_message(message.chat.id,eval(url))
         elif ask == 4:
             target = await app.ask(message.chat.id,f'send me any message that u replying the person you want',filters=filters.user(message.from_user.id))
             if not target.reply_to_message: #target user avatar
-                return await app.send_message(message.chat.id,f'❌  Invalid input /command')
+                return await app.send_message(message.chat.id,f'https://http.cat/400')
             status = await app.send_message(message.chat.id,f'loading...')
             result = await app.download_media(target.reply_to_message.from_user.photo.big_file_id) #download user avatar
             image = imgur_client.image_upload(result, 'Untitled', 'My first image upload')          #upload to imgur
@@ -452,8 +469,15 @@ async def on_message(client, message):
     if any(message.text in x for x in memelist): #user input are mini cmd
         for row in csv.DictReader(open('memes.csv', 'r', encoding='utf-8'), delimiter='|',fieldnames=['name','type','action']):
             if message.text == row['name']:
-                await minicmd(int(row['type']),row['action'])
+                await memecmd(int(row['type']),row['action'])
                 break
+    else: #minicmd
+        if message.text == ".err":
+            this_is_an_error() #type: ignore
+        elif message.text == ".id":
+            await message.reply(message.chat.id)
+        elif message.text == ".shutdown":
+            await shutdown(client,message)
 
 @app.on_inline_query()
 @error_handling
@@ -478,6 +502,6 @@ async def inlinequerymenu(client, query):
 
 
 from online import keep_alive 
-# tracking()
-# keep_alive()
+tracking()
+keep_alive()
 app.run()

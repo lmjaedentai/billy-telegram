@@ -37,6 +37,3 @@ go jail| 0|https://cdn.hk01.com/di/media/images/dw/20211025/52929457837834649621
 he go jail by himself| 0|https://i.imgur.com/ROnmLbi.png
 very very color| 0|https://img.league-funny.com/imgur/163421235519_n.jpg
 anti color| 0|https://pic1.zhimg.com/v2-93a878f9b7e6df2e7cf5f840ef30af38_b.jpg
-.id|3|message.reply(message.chat.id)
-.err|3|this_is_an_error
-.shutdown|3|shutdown(client,message)
