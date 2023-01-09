@@ -158,9 +158,11 @@ async def check_definition(search,message):
 
 @app.on_message(filters.chat(-1001733031563))
 @error_handling
-async def on_message(client, message):
+async def on_message(client, message): #billy dict
     search = message.text
-    if "/" in search or " " in search or search.isalpha() == False:
+    if search is None: #non text
+        return await message.delete()
+    elif "/" in search or " " in search or search.isalpha() == False:
         return await message.delete()
     else:
         search = search.lower().strip()
@@ -243,17 +245,23 @@ async def downloadyt(client, message):
             await askformat()
 
     vidopt = {'format': 'best','outtmpl': 'vid.%(ext)s','restrictfilenames': True,'noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'} #LINK https://github.com/yt-dlp/yt-dlp#output-template
-    audioopt = {'format': 'bestaudio','outtmpl': 'audio.%(ext)s','restrictfilenames': True,'noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'}
+    audioopt = {'format': 'bestaudio','outtmpl': '%(title)s.mp3','noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'}
     query = await app.ask(message.chat.id, "📽  Enter Youtube url",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="paste link here"))
     await askformat()
     try:
         if choice.text == 'mp4':
             result = YoutubeDL(vidopt).extract_info(query.text, download=False)
         else:
-            result = YoutubeDL(audioopt).extract_info(query.text, download=False)
+            status  = await app.send_message(message.chat.id,'⬇️ downloading...',reply_markup=ReplyKeyboardRemove())
+            music = YoutubeDL(audioopt).extract_info(query.text, download=True)
     except utils.DownloadError:
         return await app.send_message(message.chat.id,' https://http.cat/415',reply_markup=ReplyKeyboardRemove())
-    await app.send_message(message.chat.id,f"**{result['fulltitle']}** \n\n⬇️  [Download link]({result['url']})  •  [more info](https://telegra.ph/Youtube-in-Billy-KaiCheng-12-09)",disable_web_page_preview=False,reply_markup=ReplyKeyboardRemove())
+    if choice.text == 'mp4':
+        await app.send_message(message.chat.id,f"**{result['fulltitle']}** \n\n⬇️  [Download link]({result['url']})  •  [more info](https://telegra.ph/Youtube-in-Billy-KaiCheng-12-09)",disable_web_page_preview=False,reply_markup=ReplyKeyboardRemove())
+    else:
+        await query.reply_document(f"./{music['fulltitle']}.mp3",force_document=False,reply_markup=ReplyKeyboardRemove())
+        await status.delete()
+        os.remove(f"./{music['fulltitle']}.mp3")
 
 #QQ Other cmd
 @app.on_message(filters.command(["covid","c"]))
