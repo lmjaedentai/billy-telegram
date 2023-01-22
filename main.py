@@ -30,7 +30,7 @@ import lyricsgenius as lg
 #LINK https://www.youtube.com/watch?v=qeBjVJkOAGc oracle
 
 #QQ before we start
-# nltk.download('omw-1.4')#for repl
+nltk.download('omw-1.4')#for repl
 ytmusic = YTMusic()
 telegraph = Telegraph()
 telegraph.create_account(short_name='billy')
@@ -38,13 +38,18 @@ translator = google_translator(url_suffix="my")
 imgur_client = Imgur({'client_id': 'cf8cccd3042fc58d1f4'})
 memelist = [[row['name']] for row in csv.DictReader(open('memes.csv', 'r', encoding='utf-8'), delimiter='|',fieldnames=['name','type','action'])]
 genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpYRjte", skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"], remove_section_headers=True)
-# app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
-app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
-with app:
-    # app.send_message(-1001518766606, "#login\ndevice: vscode")
-    app.send_message(-1001518766606, "#login\ndevice: [repl.it](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
-    print('==========login==========')
-    track = app.send_message(-1001518766606, f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True)
+app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
+# app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
+
+try:
+    with app:
+        app.send_message(-1001518766606, "#login\ndevice: [server](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
+        print('==========login==========')
+        track = app.send_message(-1001518766606, f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True)
+except errors.exceptions.not_acceptable_406.AuthKeyDuplicated:
+    os.remove("BillyKaiChengBot.session")
+    sys.exit('[shutdown] session file error')
+
 
 def error_handling(func):
     async def err_inner(app,message: Message,**kwargs): #kwargs mean any other args avai
@@ -234,6 +239,7 @@ async def findlyrics(client, message):
         # response = telegraph.create_page(search, html_content='🎸'+lyrics.lyrics.replace("\n", "<br>").replace("Lyrics", "<br>").replace("You might also like", "<br>").replace("Embed", "<br>") , author_name=lyrics.primary_artist.name, author_url=lyrics.primary_artist.url.replace(' ','%20'))
         await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/watch?v={searchresult[0]['videoId']}")],[InlineKeyboardButton("not this one ☹️",url=f"https://www.google.com/search?q={search.replace(' ','%20')}%20lyrics")]]))
     await typing.delete()
+
 
 @app.on_message(filters.command(["youtube","y"])) #https://www.youtube.com/watch?v=wiHYx9NX4DM
 @error_handling
@@ -509,10 +515,7 @@ async def inlinequerymenu(client, query):
     else:
         await query.answer(results=searchingmode ,cache_time=1,switch_pm_text=f"🔍Billy Instant Search",switch_pm_parameter="start",)
 
-
-
-
 from online import keep_alive 
-# tracking()
-# keep_alive()
+tracking()
+keep_alive()
 app.run()
