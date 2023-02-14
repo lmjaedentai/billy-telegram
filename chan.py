@@ -33,7 +33,7 @@ mylist=[
 
 
 #QQ before we start
-app = Client("verypigbot",api_id="17817209",api_hash=os.environ['API'],bot_token='5672506489:AAEz6KoOB2o4GS1WmVCxdmPLyyR2SBnlnJY')
+app = Client("verypigbot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['chan'])
 try:
     with app:
         app.send_message(-1001518766606, "#login\ndevice: [server](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
