@@ -5,7 +5,6 @@ sys.path.append('./module')
 import csv
 import nltk
 import time
-import pytz
 import random
 import urllib
 import requests
@@ -45,7 +44,8 @@ try:
     with app:
         app.send_message(-1001518766606, "#login\ndevice: [server](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
         print('==========login==========')
-        track = app.send_message(-1001518766606, f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True)
+        track = app.send_message(-1001518766606, f"#online {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True)
+        #app.send_message(-1001733031563, f"**Billy Dictionary 📘**\n\nYou can search any definition for English word here. Simple and Fast. We support translation to Chinese in high accuracy. Just send me a word here now.\n\n[source](https://lmjaedentai.github.io/billy-telegram/) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • [feedback](https://github.com/lmjaedentai/billy-telegram/issues/new/choose)", disable_web_page_preview=True,disable_notification=True)
 except errors.exceptions.not_acceptable_406.AuthKeyDuplicated:
     os.remove("BillyKaiChengBot.session")
     sys.exit('[shutdown] session file error')
@@ -85,7 +85,7 @@ def tracking():
     def foo():
         global track
         track.delete()
-        track = app.send_message(-1001518766606,f"#online {pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')} for **{ii}**",disable_notification=True)
+        track = app.send_message(-1001518766606,f"#online {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} for **{ii}**",disable_notification=True)
     
     threading.Thread(target=lambda: every(60, foo)).start()
 
@@ -150,7 +150,7 @@ async def check_definition(search,message):
             search = lemmatize(search)
             zh = cndict(search) #try base form / lemma word
         except ValueError:      #word_form module: no word in this world
-            return await message.reply(f'https://http.cat/404   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
+            return await app.send_photo(message.chat.id,'https://http.cat/404',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
         else:
             if zh == False:     #dict.pro do not hav
                 zh = f"\n\n{translator.translate(search,lang_tgt='zh')}"
@@ -164,11 +164,13 @@ async def check_definition(search,message):
 @app.on_message(filters.chat(-1001733031563))
 @error_handling
 async def on_message(client, message): #billy dict
+    me = await app.get_me()
     search = message.text
     if search is None: #non text
         return await message.delete()
     elif "/" in search or " " in search or search.isalpha() == False:
-        return await message.delete()
+        if message.from_user.id != me.id:
+            return await message.delete()
     else:
         search = search.lower().strip()
         await check_definition(search,message)
@@ -252,22 +254,32 @@ async def downloadyt(client, message):
 
     vidopt = {'format': 'best','outtmpl': 'vid.%(ext)s','restrictfilenames': True,'noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'} #LINK https://github.com/yt-dlp/yt-dlp#output-template
     audioopt = {'format': 'bestaudio','outtmpl': '%(title)s.mp3','noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'}
-    query = await app.ask(message.chat.id, "📽  Enter Youtube url",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="paste link here"))
+    query = await app.ask(message.chat.id, "📽  Enter Youtube url /video name",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="paste link here"))
     await askformat()
-    try:
-        if choice.text == 'mp4':
-            result = YoutubeDL(vidopt).extract_info(query.text, download=False)
+
+    def search(arg):
+        global status
+        if choice.text == 'mp4': 
+            opt = vidopt
+            download = False
         else:
-            status  = await app.send_message(message.chat.id,'⬇️ downloading...',reply_markup=ReplyKeyboardRemove())
-            music = YoutubeDL(audioopt).extract_info(query.text, download=True)
-    except utils.DownloadError:
-        return await app.send_message(message.chat.id,' https://http.cat/415',reply_markup=ReplyKeyboardRemove())
+            opt = audioopt
+            download = True
+        with YoutubeDL(opt) as ydl:
+            try:
+                requests.get(arg) 
+            except:
+                return ydl.extract_info(f"ytsearch:{arg}", download=download)['entries'][0:1][0]
+            else:
+                return ydl.extract_info(arg, download=download)
+
+    result = search(query.text)
     if choice.text == 'mp4':
+        print('[fulltitle]  ',result['fulltitle'])
         await app.send_message(message.chat.id,f"**{result['fulltitle']}** \n\n⬇️  [Download link]({result['url']})  •  [more info](https://telegra.ph/Youtube-in-Billy-KaiCheng-12-09)",disable_web_page_preview=False,reply_markup=ReplyKeyboardRemove())
     else:
-        await query.reply_document(f"./{music['fulltitle']}.mp3",force_document=False,reply_markup=ReplyKeyboardRemove())
-        await status.delete()
-        os.remove(f"./{music['fulltitle']}.mp3")
+        await query.reply_document(f"./{result['fulltitle']}.mp3",force_document=False,reply_markup=ReplyKeyboardRemove())
+        os.remove(f"./{result['fulltitle']}.mp3")
 
 #QQ Other cmd
 @app.on_message(filters.command(["covid","c"]))
@@ -405,7 +417,7 @@ async def remind(client, message):
         seconds = int(time[:-1]) * time_convert[time[-1]]
     except (ValueError, KeyError,TypeError):
         return await app.send_message(message.chat.id,f"https://http.cat/304",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("instructions",callback_data="data")]]))
-    rawdate = pytz.timezone('Asia/Kuala_Lumpur').localize(datetime.datetime.now()) + datetime.timedelta(seconds = seconds) # UTC8 + delaytime
+    rawdate = datetime.datetime.now() + datetime.timedelta(seconds = seconds) # UTC8 + delaytime
     if seconds <= 0:
         await app.send_message(message.chat.id,f'https://http.cat/411')
     elif seconds > 7776000:
