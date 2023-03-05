@@ -28,6 +28,6 @@ telegraph==2.1.0
 TgCrypto==1.2.3
 tqdm==4.64.1
 urllib3==1.26.12
-Werkzeug==2.2.2
+Werkzeug==2.2.3
 word-forms==2.1.0
 yapf==0.32.0
