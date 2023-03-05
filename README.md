@@ -2,6 +2,10 @@
   <img width="70" alt="image" src="https://user-images.githubusercontent.com/63090071/147376055-81efdfcf-3ae0-4901-bb11-8610028e7dcd.png"> 
 </p>
 
+<h1 align="center">
+  Billy KaiCheng
+</h1>
+
 <p align="center">
   <i>
   Host by Heroku. <br>
@@ -15,13 +19,12 @@
   </i>
 </p>
 
+<br>
+ <a href="https://t.me/billykaichengbot" target="_blank"><img src="https://user-images.githubusercontent.com/63090071/204215215-5474e1c9-6575-432e-8b33-010690dc2a67.png" width=220px></a>
 
-
-
-# Billy KaiCheng
 A [multipurpose telegram bot](https://t.me/billykaichengbot) by **Jaeden Tai :trollface:** in 2022 by using [Pyrogram](https://docs.pyrogram.org/).
 
- <a href="https://t.me/billykaichengbot" target="_blank"><img src="https://user-images.githubusercontent.com/63090071/204215215-5474e1c9-6575-432e-8b33-010690dc2a67.png" width=220px></a>
+
 <br>
 
 
