@@ -43,14 +43,12 @@ mylist=[
 memelist = [[row['name']] for row in csv.DictReader(open('memes.csv', 'r', encoding='utf-8'), delimiter='|',fieldnames=['name','type','action'])]
 
 #QQ before we start
-app = Client("verypigbot",api_id="17817209",api_hash=os.environ['API'],bot_token='5672506489:AAEz6KoOB2o4GS1WmVCxdmPLyyR2SBnlnJY')
+app = Client("verypigbot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['chan'])
 imgur_client = Imgur({'client_id': 'cf8cccd3042fc58d1f4'})
 try:
     with app:
-        app.send_message(-1001518766606, "#login\ndevice: [server](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
+        app.send_message(-1001518766606, "#login\ndevice: [server](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove(),reply_to_message_id=179723)
         print('==========login==========')
-        track = app.send_message(-1001518766606, f"#online {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True)
-        #app.send_message(-1001733031563, f"**Billy Dictionary 📘**\n\nYou can search any definition for English word here. Simple and Fast. We support translation to Chinese in high accuracy. Just send me a word here now.\n\n[source](https://lmjaedentai.github.io/billy-telegram/) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • [feedback](https://github.com/lmjaedentai/billy-telegram/issues/new/choose)", disable_web_page_preview=True,disable_notification=True)
 except errors.exceptions.not_acceptable_406.AuthKeyDuplicated:
     os.remove("verypigbot.session")
     sys.exit('[shutdown] session file error')
@@ -86,10 +84,7 @@ def antispam():
     return f"https://http.cat/{random.choice(err)}"
 
 
-#QQ other cmd
-
-
-
+#QQ user cmd
 @app.on_message(filters.command(["memes","m"]))
 @error_handling
 async def sendmeme(client, message):  
@@ -100,13 +95,24 @@ async def sendmeme(client, message):
     remove = await message.reply("times up",reply_markup=ReplyKeyboardRemove())
     await remove.delete()
 
+
+
+
+#QQ antispam
+@app.on_message(filters.text & filters.private)
+@error_handling
+async def on_message(client, message):
+    await app.send_photo(message.chat.id,antispam())
+
 previous='electron'
 @app.on_message(filters.text & filters.group)
-@error_handling
+@error_handling #QQ keyword
 async def on_message(client, message):
     global previous
     if message.text.lower()  == previous: #antispam
-        return await app.send_photo(message.chat.id,antispam())
+        antispamm = await app.send_photo(message.chat.id,antispam())
+        await asyncio.sleep(4)
+        await antispamm.delete()
     else:
         previous = message.text.lower()
 
@@ -154,11 +160,6 @@ async def on_message(client, message):
         elif message.text == ".shutdown":
             await shutdown(client,message)
 
-
-@app.on_message(filters.text & filters.private)
-@error_handling
-async def on_message(client, message):
-    await app.send_photo(message.chat.id,antispam())
 
 
 from online import keep_alive 

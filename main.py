@@ -2,8 +2,8 @@ print('==========start==========')
 import os
 import sys
 sys.path.append('./module') 
-import csv
 import nltk
+import json
 import time
 import random
 import urllib
@@ -15,17 +15,14 @@ import traceback
 import mediawiki
 import pastebinpy as pbp
 from telegraph import Telegraph
-from mediawiki import MediaWiki
 from imgur_python import Imgur
 from word_forms.lemmatizer import lemmatize
-from PyMultiDictionary import MultiDictionary, DICT_WORDNET
 from pyromod import listen
 from pyrogram import Client,filters, errors
-from pyrogram.types import Message, InlineKeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup,InlineQueryResultArticle, InputTextMessageContent, ForceReply, ReplyKeyboardRemove, ChatPermissions
+from pyrogram.types import Message, InlineKeyboardButton,ReplyKeyboardMarkup, InlineKeyboardMarkup, ForceReply, ReplyKeyboardRemove, ChatPermissions
 from module.google_trans_new import google_translator  
 from ytmusicapi import YTMusic
 from yt_dlp import YoutubeDL, utils
-import lyricsgenius as lg
 
 #LINK https://www.youtube.com/watch?v=qeBjVJkOAGc oracle
 
@@ -36,17 +33,17 @@ telegraph = Telegraph()
 telegraph.create_account(short_name='billy')
 imgur_client = Imgur({'client_id': 'cf8cccd3042fc58d1f4'})
 translator = google_translator(url_suffix="tw") 
-memelist = [[row['name']] for row in csv.DictReader(open('memes.csv', 'r', encoding='utf-8'), delimiter='|',fieldnames=['name','type','action'])]
-genius = lg.Genius("zdhRYLihRzp3sUoJRFBcEOuMp_Z3eHTIGDbDzbMPqs_PmyPOSMGgYm2YxhpYRjte", skip_non_songs=True, excluded_terms=["(Remix)", "(Live)"], remove_section_headers=True)
-# app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
-app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
+# app = Client("billybetabot",api_id="17817209",api_hash=os.environ['API'],bot_token='5456415338:AAGyHTNPA2Bi1CHV0ERseo13XVU_WYP5SiY')
+app = Client("BillyKaiChengBot",api_id="17817209",api_hash=os.environ['API'],bot_token=os.environ['TOKEN'])
 
+with open('new.json', 'r') as f:
+    data = json.load(f)
+    
 try:
     with app:
-        app.send_message(-1001518766606, "#login\ndevice: [server](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove())
+        loginapp = app.send_message(-1001518766606, "#login\ndevice: [server](https://replit.com/@lmjaedentai/billy-telegram#main.py)", disable_web_page_preview=True,disable_notification=True,reply_markup=ReplyKeyboardRemove(),reply_to_message_id=182844)
         print('==========login==========')
-        track = app.send_message(-1001518766606, f"#online {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True)
-        #app.send_message(-1001733031563, f"**Billy Dictionary 📘**\n\nYou can search any definition for English word here. Simple and Fast. We support translation to Chinese in high accuracy. Just send me a word here now.\n\n[source](https://lmjaedentai.github.io/billy-telegram/) • [about](https://telegra.ph/Billy-KaiCheng-09-04) • [feedback](https://github.com/lmjaedentai/billy-telegram/issues/new/choose)", disable_web_page_preview=True,disable_notification=True)
+        track = app.send_message(-1001518766606, f"#online {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} for **0**", disable_web_page_preview=True,disable_notification=True,reply_to_message_id=182844)
 except errors.exceptions.not_acceptable_406.AuthKeyDuplicated:
     os.remove("BillyKaiChengBot.session")
     sys.exit('[shutdown] session file error')
@@ -99,7 +96,7 @@ def tracking():
     def foo():
         global track
         track.delete()
-        track = app.send_message(-1001518766606,f"#online {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} for **{ii}**",disable_notification=True)
+        track = app.send_message(-1001518766606,f"#online {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} for **{ii}**",disable_notification=True,reply_to_message_id=loginapp.id)
     
     threading.Thread(target=lambda: every(60, foo)).start()
 
@@ -118,77 +115,106 @@ async def shutdown(app,message):
     else:
         await message.reply('https://http.cat/450')
 
-async def check_definition(search,message):
-    def cndict(search):
-        targetlist = ['noun','adverb','adjective','verb','preposition','conjunction','article','pronoun']#,'1.','2.','3.','4.','5.','6.','7.','8.','9.','0.','[','|| ','] ','/',')','①','③']
-        replacelist = ['\n\nNoun: ','\n\nAdverb: ','\n\nAdjective: ','\n\nVerb: ','\n\nPreposition: ','\n\nConjunction: ','\n\nArticles:','\n\nPronouns:']#,'\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.','\n • ','\n\nExample:\n • ','\n • ','/ ',') ','\n① ','\n③ ']
-        meaning = ''
-        with open('dict max.csv', 'r', encoding='utf-8') as f:
-            for row in csv.DictReader(f, delimiter='*',fieldnames=['name','pronouciation','meaning']):
-                if search == row['name']:
-                    meaning += row['meaning']     #if the phrases got 2 meaning, += wont sacrify the first meaning
-                    break                         #everythings ends here, stop searching
-            if meaning != '':
-                for i in range(len(targetlist)):  #format definition
-                    meaning = meaning.replace(targetlist[i],replacelist[i])
-                for n in range(43,0,-1):
-                    if f'{n}. ' in meaning:
-                        meaning = meaning.replace(f'{n}. ',f'\n{n}.')
-                meaning = meaning.replace(f'.',f'. ')
-                return meaning
-            else:
-                return False
-    
-    async def endict(search):
+def check_definition(search,second=False):
+    def chinese(search,second=False):
+        meaning =''
+        targetlist = ['noun','adverb','adjective','verb','Ad\n\nVerb: : ','preposition','conjunction','article','pronoun','pro\n\nNoun: ','exclamation']#,'1.','2.','3.','4.','5.','6.','7.','8.','9.','0.','[','|| ','] ','/',')','①','③']
+        replacelist = ['\n\nNoun: ','\n\nAdverb:','\n\nAdjective: ','\n\nVerb: ','Adverb: ','\n\nPreposition: ','\n\nConjunction: ','\n\nArticles: ','\n\nPronouns: ','\n\nPronouns: ','\n\nExclamation: ']#,'\n1.','\n2.','\n3.','\n4.','\n5.','\n6.','\n7.','\n8.','\n9.','\n10.','\n • ','\n\nExample:\n • ','\n • ','/ ',') ','\n① ','\n③ ']
         try:
-            rawresult = MultiDictionary().meaning('en',search, dictionary=DICT_WORDNET)
-        except IndexError: #no result
-            pass
-        except KeyError:
-            await endict(search)
+            meaning = data[search]
+        except KeyError: #dict.pro no this word
+            if second == False:
+                try:
+                    searchpure = lemmatize(lemmatize(search))
+                except ValueError: #nltk no this word
+                    zh = f"\n\n{translator.translate(search,lang_src='en',lang_tgt='zh-tw')}"
+                    if zh.lower().strip() == search.strip() or zh=='':  #google trans do not hav
+                        meaning += f'   `(no result)`'
+                    else:
+                        meaning += f'{zh}     `(google translate)`'  
+                else: 
+                    meaning = chinese(searchpure,second=True)
+                    return meaning
+            else: 
+                meaning += f'   `(no result)`'
         else:
-            i = 0
-            result = ''
-            for types in ['Noun','Verb','Adjective','Adverb']: #format definition
-                if types in rawresult:
-                    result+=f'\n{types}\n'
-                    for meanings in rawresult[types]:
-                        i+=1
-                        result += f'{i}. {meanings}\n'
-            await app.send_message(message.chat.id,f'📘 **[{search}](https://www.oxfordlearnersdictionaries.com/definition/english/{search.replace(" ","%20")})** \n{result}‎ ')
-
-    typing = await app.send_message(message.chat.id,'searching...')
-    await endict(search)
-    zh = cndict(search)
-    if zh == False or zh == '': #no result
-        try:
-            searchpure = lemmatize(search)
-            zh = cndict(searchpure) #try base form / lemma word
-        except ValueError:      #word_form module: no word in this world
-            return await app.send_photo(message.chat.id,'https://http.cat/404',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
-        else:
-            if zh == False:     #dict.pro do not hav
-                zh = f"\n\n{translator.translate(search,lang_src='en',lang_tgt='zh-tw')}  `(google translate)`"
-                if zh.lower().strip() == search.strip() or zh=='':  #google trans do not hav
-                    return await message.reply(f'https://http.cat/404   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
+            for i in range(len(targetlist)):  #format definition
+                meaning = meaning.replace(targetlist[i],replacelist[i])
+            for n in range(43,0,-1):
+                if f'{n}. ' in meaning:
+                    meaning = meaning.replace(f'{n}. ',f'\n{n}.')
+            meaning = meaning.replace(f'.',f'. ')
         finally:
-            await typing.delete()
-    await app.send_message(message.chat.id,f'👲🏻**中文注释**{zh}',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🙏 Credits",url=f'https://github.com/mahavivo/english-wordlists')]]))
-    await typing.delete()
+            return meaning
 
+    if second == 'spelling':
+        output = f'\n\n❓do you mean:  **{search}**\n'
+    else:
+        output = ''
+    try:
+        r = requests.get(f'https://api.dictionaryapi.dev/api/v2/entries/en/{search}')
+        raw = r.json()
+        ooo = raw[0]['meanings']
+    except KeyError:
+        if second == False:
+            try:
+                searchpure = lemmatize(lemmatize(search))
+            except ValueError: #not a real word
+                meriam = requests.get(f'https://dictionaryapi.com/api/v3/references/learners/json/{search}?key=5109265c-d6b4-4c53-950f-530a5c8c9658')
+                wrongspelling = meriam.json()
+                if not wrongspelling: #no other word
+                    return False
+                elif 'meta' in wrongspelling[0]: #word available in wesbster
+                    return f'\n\n👉🏻  refer [Meriam Webster Dictionary](https://www.merriam-webster.com/dictionary/{search})'+'\n\n\n👲🏻**中文注释**  '+chinese(search)
+                else: #replace w typo
+                    newsearch = wrongspelling[0]
+                    print('[newsearch]',newsearch)
+                    return check_definition(newsearch,second='spelling')
+            else:
+                return check_definition(searchpure,second=True)
+        else:
+            return False
+    else:
+        n=0
+        for result in raw:
+            for a in result['meanings']:
+                output += "\n\n" + a['partOfSpeech']
+                for definition in a['definitions']:
+                    n+=1
+                    output += f"\n{n}. {definition['definition']}"
+        final = output+'\n\n\n👲🏻**中文注释**  '+chinese(search)
+        if len(final) >4094:
+            final = final[0:4070]
+        return final
+
+previous = 'BOOHOWAER'
 @app.on_message(filters.chat(-1001733031563))
 @error_handling
-async def on_message(client, message): #billy dict
+async def on_message(client, message): #QQ billy dict
     me = await app.get_me()
-    search = message.text
+    search = message.text.lower()
     if search is None: #non text
         return await message.delete()
-    elif "/" in search or " " in search or search.isalpha() == False:
+    elif "/" in search or search.replace(" ", "").isalpha() == False or search.count(' ')>8: #bot cmd/not pure text/too many request
         if message.from_user.id != me.id:
             return await message.delete()
     else:
-        search = search.lower().strip()
-        await check_definition(search,message)
+        rawtext = search.split()
+        for i in rawtext:
+            global previous
+            if i == previous: #antispam
+                return await app.send_photo(message.chat.id,'https://http.cat/429')
+            else:
+                previous = i
+                
+            typing = await app.send_message(message.chat.id,'searching...')
+            result = check_definition(i)
+            if result == False:
+                await typing.delete()
+                return await app.send_photo(message.chat.id,'https://http.cat/404',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q=define%20{search.replace(' ','%20')}")]]))
+            else:
+                await typing.edit(f'📘 **[{i}](https://www.oxfordlearnersdictionaries.com/definition/english/{search.replace(" ","%20")})**{result}\n‎ ')
+
     
 #QQ main cmd
 @app.on_message(filters.command("shau"))
@@ -210,7 +236,11 @@ async def dictionary(client, message):
         search = query.text.lower().strip()
     else: #args is given together with cmd
         search = message.text.replace(f'/{message.command[0]} ','').lower().strip()
-    await check_definition(search,message)
+    result = check_definition(search)
+    if result == False:
+        return await app.send_photo(message.chat.id,'https://http.cat/404',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q=define%20{search}')]]))
+    else:
+        await app.send_message(message.chat.id,f'📘 **[{search}](https://www.oxfordlearnersdictionaries.com/definition/english/{search.replace(" ","%20")})**{result}\n‎ ')
 
 @app.on_message(filters.command(["kamus","k"]))
 @error_handling
@@ -225,7 +255,7 @@ async def kamus(client, message):
 
     zh = translator.translate(search,lang_tgt='zh-tw',lang_src='ms') 
     if zh.lower().strip() == search or zh=='': 
-        await app.send_message(message.chat.id,f'https://http.cat/404   /help',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Cari Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
+        return await app.send_photo(message.chat.id,'https://http.cat/404',reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f'https://www.google.com/search?q={search.replace(" ","%20")}')]]))
     else: 
         # await app.send_message(message.chat.id,f'📕 **{search}** \n\n👲 {zh}\n\n**➡️ [lihat selanjutnya](https://www.ekamus.info/index.php/term/%E9%A9%AC%E6%9D%A5%E6%96%87-%E5%8D%8E%E6%96%87%E5%AD%97%E5%85%B8,{search.replace(" ","%20").lower()}.xhtml)**')#, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📕 Kamus Dewan",url=f'https://prpm.dbp.gov.my/cari1?keyword={query.text.replace(" ","%20")}'),InlineKeyboardButton("🔎 ekamus (bc)",url=f'https://www.ekamus.info/index.php/?a=srch&d=1&q={query.text.replace(" ","%20")}')]]))
         await app.send_message(message.chat.id,f'📕 **{search}** \n\n👲 {zh}\n\n**➡️ [lihat selanjutnya](https://www.ekamus.info/index.php/?a=srch&d=1&q={search.replace(" ","%20").lower()})**')
@@ -248,21 +278,21 @@ async def findlyrics(client, message):
             searchresult = ytmusic.search(query=search,filter='songs',limit=1)
             rawsong = ytmusic.get_watch_playlist(searchresult[0]["videoId"])
             l = ytmusic.get_lyrics(browseId =rawsong["lyrics"])
-        except (requests.exceptions.ConnectionError):
-            print('[lyrics err]')
-            await searchlyrics(search)
-        except:
+        except (IndexError, Exception):
             await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**😀 [Try Google instant search](https://www.google.com/search?q={search.replace(' ','%20')}%20lyrics)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
         else:
-            if l['lyrics'] is None:
-                return await app.send_message(message.chat.id,f"☹️ No search result\n\n **or**\n\n**😀 [Try Google](https://www.google.com/search?q={search.replace(' ','%20')}%20lyrics)**")#,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔎 Try Google.",url=f"https://www.google.com/search?q={query.text.replace(' ','%20')}%20lyrics")]]))
-            response = telegraph.create_page(search, author_name=searchresult[0]['artists'][0]['name'], author_url=f"https://music.youtube.com/channel/{searchresult[0]['artists'][0]['id']}", html_content=l['lyrics'].replace("\n", "<br>"))
-            # response = telegraph.create_page(search, html_content='🎸'+lyrics.lyrics.replace("\n", "<br>").replace("Lyrics", "<br>").replace("You might also like", "<br>").replace("Embed", "<br>") , author_name=lyrics.primary_artist.name, author_url=lyrics.primary_artist.url.replace(' ','%20'))
-            await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/watch?v={searchresult[0]['videoId']}")],[InlineKeyboardButton("not this one ☹️",url=f"https://www.google.com/search?q={search.replace(' ','%20')}%20lyrics")]]))
+            try:
+                response = telegraph.create_page(search, author_name=searchresult[0]['artists'][0]['name'], author_url=f"https://music.youtube.com/channel/{searchresult[0]['artists'][0]['id']}", html_content=l['lyrics'].replace("\n", "<br>"))
+            except requests.exceptions.ConnectionError: #telegra.ph put aeroplane
+                final = l['lyrics']
+                if len(final) >4094:
+                    final = l['lyrics'][0:4070]
+                await app.send_message(message.chat.id,f"**{search}**\n[{searchresult[0]['artists'][0]['name']}](https://music.youtube.com/channel/{searchresult[0]['artists'][0]['id']})\n\n{final}",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/watch?v={searchresult[0]['videoId']}")],[InlineKeyboardButton("not this one ☹️",url=f"https://www.google.com/search?q={search.replace(' ','%20')}%20lyrics")]]))
+            else:
+                await app.send_message(message.chat.id,response['url'],reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎧 listen",url=f"https://www.youtube.com/watch?v={searchresult[0]['videoId']}")],[InlineKeyboardButton("not this one ☹️",url=f"https://www.google.com/search?q={search.replace(' ','%20')}%20lyrics")]]))
         await typing.delete()
-    
-    await searchlyrics(search)
 
+    await searchlyrics(search)
 
 @app.on_message(filters.command(["youtube","y"])) #https://www.youtube.com/watch?v=wiHYx9NX4DM
 @error_handling
@@ -274,7 +304,7 @@ async def downloadyt(client, message):
             await askformat()
 
     vidopt = {'format': 'best','outtmpl': 'vid.%(ext)s','restrictfilenames': True,'noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'} #LINK https://github.com/yt-dlp/yt-dlp#output-template
-    audioopt = {'format': 'bestaudio','outtmpl': '%(title)s.mp3','noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'}
+    audioopt = {'format': 'bestaudio','outtmpl': '%(title)s.mp3','restrictfilenames': True,'noplaylist': True,'nocheckcertificate': True,'ignoreerrors': False,'logtostderr': False,'default_search': 'auto','source_address': '0.0.0.0'}
     query = await app.ask(message.chat.id, "📽  Enter Youtube url /video name",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="paste link here"))
     await askformat()
 
@@ -294,13 +324,15 @@ async def downloadyt(client, message):
             else:
                 return ydl.extract_info(arg, download=download)
 
+    typing = await app.send_message(message.chat.id,'searching...')
     result = search(query.text)
     if choice.text == 'mp4':
-        print('[fulltitle]  ',result['fulltitle'])
-        await app.send_message(message.chat.id,f"**{result['fulltitle']}** \n\n⬇️  [Download link]({result['url']})  •  [more info](https://telegra.ph/Youtube-in-Billy-KaiCheng-12-09)",disable_web_page_preview=False,reply_markup=ReplyKeyboardRemove())
+        await typing.edit(f"**{result['fulltitle']}** \n\n⬇️  [Download link]({result['url']})  •  [more info](https://telegra.ph/Youtube-in-Billy-KaiCheng-12-09)",disable_web_page_preview=False,reply_markup=ReplyKeyboardRemove())
     else:
-        await query.reply_document(f"./{result['fulltitle']}.mp3",force_document=False,reply_markup=ReplyKeyboardRemove())
-        os.remove(f"./{result['fulltitle']}.mp3")
+        filename = f"./{result['requested_downloads'][0]['_filename']}"
+        await query.reply_document(filename,force_document=False,reply_markup=ReplyKeyboardRemove())
+        await typing.delete()
+        os.remove(filename)
 
 #QQ sub cmd
 @app.on_message(filters.command(["covid","c"]))
@@ -315,14 +347,14 @@ async def covid(client, message):
     cases = readcsv('https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/epidemic/cases_malaysia.csv')
     deaths = readcsv('https://raw.githubusercontent.com/MoH-Malaysia/covid19-public/main/epidemic/deaths_malaysia.csv')
     await message.reply(f'**🏥 <u>Active: {cases[4]}</u>** \n\n🔴 New cases: `{cases[1]}`\n🟢 Recovered: `{cases[3]}`\n⚫ Death: `{deaths[1]}`\n\nstay home to stay safe'
-                    ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ more info",url="https://covidnow.moh.gov.my/")]]))
+                    ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("ℹ more info",url="https://data.moh.gov.my/covid")]]))
 
 @app.on_message(filters.command(["wiki","wk"]))
 @error_handling
 async def wiki(client, message):
     search = await app.ask(message.chat.id, "🔎 Enter name of article to search ",reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="exp: Tiananmen square"))
     try:
-        result = MediaWiki().page(search.text)
+        result = mediawiki.MediaWiki().page(search.text)
     except mediawiki.DisambiguationError as suggestion:
         await app.send_photo(message.chat.id,"https://http.cat/300")
         await search.reply(f'**🤔 Please specify your search query** \n{suggestion} \n\n**Your search query matched mutliple pages.**\n\n/wiki')
@@ -411,24 +443,32 @@ async def unmuteppl(client, message):
 @error_handling
 async def sendweather(client, message):
     choice = await app.ask(message.chat.id,'🌏 Choose your region',filters=filters.user(message.from_user.id),reply_markup=ReplyKeyboardMarkup([['Malacca'],['Other']],resize_keyboard=True, one_time_keyboard=True))
-    if choice.text == 'Malacca':
-        city = 'Malacca'
+    if choice.text != 'Other':
+        city = query.text
     else:
         query = await app.ask(message.chat.id,'🌏 Enter your region',reply_to_message_id=message.id,filters=filters.user(message.from_user.id),reply_markup = ForceReply(selective=True,placeholder="by MSN weather"))
         city = query.text
     typing =  await app.send_message(message.chat.id,'searching',reply_markup=ReplyKeyboardRemove())
     try:
+        response = requests.get(f"http://api.openweathermap.org/data/2.5/forecast?appid=c19ed679efd0dd0f4afdaa12325d2f17&q={city.replace(' ','%20')}&units=metric")
+        raw3 = response.json() #forecast
         response = requests.get(f"http://api.openweathermap.org/data/2.5/weather?appid=c19ed679efd0dd0f4afdaa12325d2f17&q={city.replace(' ','%20')}&units=metric")
-        raw = response.json()
-        response = requests.get(f"http://api.openweathermap.org/data/2.5/air_pollution?appid=c19ed679efd0dd0f4afdaa12325d2f17&lat={raw['coord']['lat']}&lon={raw['coord']['lon']}")
-        raw2 = response.json()
-    except IndexError:
+        raw = response.json()  #current
+        response = requests.get(f"http://api.openweathermap.org/data/2.5/air_pollution?appid=c19ed679efd0dd0f4afdaa12325d2f17&lat={raw3['city']['coord']['lat']}&lon={raw3['city']['coord']['lon']}")
+        raw2 = response.json() #air quality
+    except (IndexError,KeyError):
         return await message.reply(f'https://http.cat/404   /help',reply_markup=ReplyKeyboardRemove())
     else:
-        weathercode = {"01d":"☀️","02d":"⛅","03d":"☁️☁️","04d":"☁️","09d":"🌦️","10d":"🌧️","11d":"⛈️","13d":"❄️","50d":"🌫️","01n":"☀️","02n":"⛅","03n":"☁️☁️","04n":"☁️","09n":"🌦️","10n":"🌧️","11n":"⛈️","13n":"❄️","50n":"🌫️"}
+        tcode = round((datetime.datetime.now().hour/24*8)-1) #current time code
+        weathercode = {"01d":"☀️","02d":"🌤️","03d":"🌥️","04d":"☁️","09d":"🌦️","10d":"☔","11d":"⛈️","13d":"❄️","50d":"🌫️","01n":"🌝","02n":"🌚","03n":"🌃","04n":"☁️","09n":"🌦️","10n":"☔","11n":"⛈️","13n":"❄️","50n":"🌫️"}
         aircode={1:"Good",2:"Fair",3:"Moderate",4:"Poor",5:"Very poor"}
+        time = ['now','3hr:   ','6hr:   ','9hr:   ','12hr: ']
+
+        forecast = f"**[{raw['name']}](https://www.google.com/search?q={city.replace(' ','%20')}%20weather)**\n{weathercode[raw['weather'][0]['icon']]} {raw['weather'][0]['description']}\n\n🌡 temp: **{raw['main']['temp']}°C**\n🥵 highest: **{raw['main']['temp_max']}°C**\n🥶 lowest: **{raw['main']['temp_min']}°C**\n\n😑 feels like: **{raw['main']['feels_like']}°C**\n💧 humidity: **{raw['main']['humidity']}**\n🍃 wind: **{raw['wind']['speed']}km/h  {raw['wind']['deg']}°**\n🌬️ air quality: **{aircode[raw2['list'][0]['main']['aqi']]}**\n"
+        for i in range(4):
+            forecast+= f"\n{time[i+1]} {weathercode[raw3['list'][i+tcode]['weather'][0]['icon']]}  {round(raw3['list'][i+tcode]['main']['temp'])}°C  •  🌧️ {round(raw3['list'][i+tcode]['pop']*100)}%"
         await typing.delete()
-        await app.send_message(message.chat.id,f"**[{raw['name']}](https://www.google.com/search?q={city.replace(' ','%20')}%20weather)**\n{weathercode[raw['weather'][0]['icon']]} {raw['weather'][0]['description']}\n\n🌡 temp: **{raw['main']['temp']}°C**\n🥵 highest: **{raw['main']['temp_max']}°C**\n🥶 lowest: **{raw['main']['temp_min']}°C**\n\n😑 feels like: **{raw['main']['feels_like']}°C**\n💧 humidity: **{raw['main']['humidity']}**\n🍃 wind: **{raw['wind']['speed']}km/h  {raw['wind']['deg']}°**\n\n☁️ cloudiness: **{raw['clouds']['all']}%**\n👀 visibility: **{raw['visibility']}m**\n🌬️ air quality: **{aircode[raw2['list'][0]['main']['aqi']]}**",disable_web_page_preview=True,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("by OpenWeatherMap 🌞",url='https://openweathermap.org/api')]]))
+        await app.send_message(message.chat.id,f"{forecast}\n‎",disable_web_page_preview=True,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("by OpenWeatherMap 🌞",url='https://openweathermap.org/api')]]))
 
 
 
@@ -459,20 +499,11 @@ async def reminder_instructions(client, callback_query):
     await callback_query.answer(f"You can enter any time value you like\nby following format below.\n\nFor example:\n\n10 second  : 10s\n10 minutes : 10m\n10 hours     : 10h\n10 days       : 10d\n\nThis beta feature currently is unstable.",show_alert=True)
 
 
-@app.on_message(filters.command(["other","more"]))
-@error_handling
-async def other_cmdlist(client, message):
-    i = await message.reply('Select the feature you want',reply_markup=ReplyKeyboardMarkup([['/help'],['/peribahasa'],['/wiki'],['/weather'],['/covid']],resize_keyboard=True, one_time_keyboard=True))
-    await asyncio.sleep(2)
-    await i.delete()
-    await asyncio.sleep(20)
-    remove = await message.reply("times up",reply_markup=ReplyKeyboardRemove())
-    await remove.delete()
-
-@app.on_message(filters.command(["start","help",'test']))
+@app.on_message(filters.command(["start","help",'test',"other","more"]))
 @error_handling
 async def helpmenu(client, message):
-    await app.send_photo(message.chat.id,'https://http.cat/100')
+    if message.text.lower().strip() in ["/start","/help"]:
+        await app.send_photo(message.chat.id,'https://http.cat/100')
     await app.send_message(message.chat.id,'2022 coded in Python\n[source](https://lmjaedentai.github.io/billy-telegram/) • [privacy](https://telegra.ph/Privacy-Policy-02-19-26) • /feedback\n\n**Main Command**\n• dont touch /shau\n• cn to en /dictionary\n• download /youtube\n• search song /lyrics\n\n**/more Subcommand**\n• google /translate\n• malay /kamus\n• real time statistics /covid\n• search for /wiki\n• cari /peribahasa \n• find /memes\n• check /weather'
     ,reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("about us 🍃",url='https://telegra.ph/Billy-KaiCheng-09-04')]]), disable_web_page_preview=True)
 
@@ -492,7 +523,7 @@ async def on_message(client, message):
     if message.text == ".err":
         this_is_an_error() #type: ignore
     elif message.text == ".id":
-        await message.reply(message.chat.id)
+        await message.reply(f"{message.chat.id}  {message.reply_to_message.id}")
     elif message.text == ".shutdown":
         await shutdown(client,message)
 
