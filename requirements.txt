@@ -22,7 +22,7 @@ pyromod==1.5
 PySocks==1.7.1
 pytz==2022.2.1
 regex==2022.9.13
-requests==2.28.1
+requests==2.31.0
 soupsieve==2.3.2.post1
 telegraph==2.1.0
 TgCrypto==1.2.3
